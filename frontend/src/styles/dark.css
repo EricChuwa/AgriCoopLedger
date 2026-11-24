@@ -1,0 +1,90 @@
+/* Dark theme for the signed-in app. Same palette: evergreen, teal, lime, cayenne and linen.
+   Only the semantic tokens change, so every screen follows. Screen only: printed pages stay light. */
+@media screen {
+  .app.theme-dark,
+  .lp-page.theme-dark,
+  .shell.theme-dark {
+    color-scheme: dark;
+    --bg: #001a1a;                       /* evergreen, deepened for the page */
+    --paper: #052e2e;                    /* cards and tables */
+    --paper-hi: #0a4141;
+    --ink: var(--linen);
+    --teal: #8dbbb6;                     /* teal lifted for text and outlines on dark */
+    --rule: rgba(239, 231, 218, 0.14);
+    --line: rgba(239, 231, 218, 0.45);
+    --edge: #000a0a;
+    --error: #ff9a6c;                    /* cayenne lifted so small text stays readable */
+    --tint: rgba(239, 231, 218, 0.06);
+    --tint-2: rgba(239, 231, 218, 0.12);
+    --tint-0: rgba(239, 231, 218, 0.025);
+    --placeholder: rgba(239, 231, 218, 0.5);
+    --on-teal: var(--evergreen);
+    --shadow-soft: 0 1px 0 rgba(0, 0, 0, .2), 0 10px 26px -14px rgba(0, 0, 0, .7);
+  }
+  .app.theme-dark .app-sidebar { background: var(--evergreen); border-right: 1px solid var(--rule); }
+  .app.theme-dark .dcard-hero,
+  .app.theme-dark .stat-hero { background: linear-gradient(150deg, #0e4749, var(--evergreen)); }
+  .app.theme-dark .btn-primary { box-shadow: 0 3px 0 #5d7d16; }
+  .app.theme-dark .btn-primary:hover { box-shadow: 0 4px 0 #5d7d16; }
+  .app.theme-dark .btn-danger { color: #1b0a02; }
+  .app.theme-dark .app-body { background:
+    radial-gradient(60rem 24rem at 100% -6rem, rgba(149, 198, 35, .08), transparent 70%), var(--bg); }
+  .app.theme-dark .dialog::backdrop { background: rgba(0, 10, 10, .7); }
+  .app.theme-dark .pill-owed { background: transparent; }
+  .app.theme-dark img { filter: none; }
+}
+
+/* the toggle itself works in both themes */
+.theme-toggle { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--paper); color: var(--ink); box-shadow: var(--shadow-card, none); }
+.theme-toggle:hover { background: var(--tint-2); }
+.theme-toggle:focus-visible { outline: 3px solid var(--cayenne); outline-offset: 2px; }
+.theme-toggle svg { transition: transform .35s cubic-bezier(.2, .7, .2, 1); }
+.theme-toggle:active svg { transform: rotate(35deg) scale(.9); }
+
+@media screen {
+  .app.theme-dark .period-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1.5l6 6 6-6' fill='none' stroke='%23efe7da' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}
+
+/* Switching theme: night comes down like a sunset, day rises like a sunrise, and the icon turns over */
+@property --sweep { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+.theme-icon { display: grid; place-items: center; }
+@media screen and (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  ::view-transition-old(root) { z-index: 0; }
+  ::view-transition-new(root) { z-index: 1; animation: theme-sweep 1s cubic-bezier(.45, .05, .25, 1) both; }
+  :root[data-theme-swap="to-dark"]::view-transition-new(root) {
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--sweep) - 24%), transparent var(--sweep));
+  }
+  :root[data-theme-swap="to-light"]::view-transition-new(root) {
+    mask-image: linear-gradient(to top, #000 0, #000 calc(var(--sweep) - 24%), transparent var(--sweep));
+  }
+  @keyframes theme-sweep { from { --sweep: 0%; } to { --sweep: 124%; } }
+  .theme-icon { animation: theme-icon-in .55s cubic-bezier(.2, .8, .2, 1) both; }
+  @keyframes theme-icon-in {
+    from { transform: rotate(-120deg) scale(.3); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+}
+
+/* Sign in and create account */
+.shell { position: relative; background: var(--bg); color: var(--ink); }
+.auth-theme { position: absolute; z-index: 5; top: 1.25rem; right: clamp(1rem, 3vw, 2rem); width: 2.75rem; height: 2.75rem; background: var(--tint); box-shadow: none; }
+.auth-theme:hover { background: var(--tint-2); }
+@media (max-width: 860px) {
+  .auth-theme, .auth-theme:hover { top: 0.9rem; right: 1rem; background: rgba(0, 38, 38, 0.55); color: var(--linen); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+}
+.tabs { background: var(--tint-2); }
+
+@media screen {
+  .shell.theme-dark :focus-visible { outline-color: var(--lime); }
+  .shell.theme-dark .auth-theme:focus-visible { outline-color: var(--lime); }
+  .shell.theme-dark input:focus-visible, .shell.theme-dark select:focus-visible { box-shadow: 0 0 0 6px rgba(149, 198, 35, 0.3); }
+  .shell.theme-dark select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1.5l6 6 6-6' fill='none' stroke='%23efe7da' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  .shell.theme-dark .tabs a[aria-current="page"] { background: var(--lime); color: var(--evergreen); }
+  .shell.theme-dark .brand { border-right: 1px solid var(--rule); }
+}

@@ -1,0 +1,65 @@
+/* Paper. Reports, statements and receipts print as plain, formal documents: black on white, square lines,
+   tables with a repeated header, no cards, shadows or screen colours. Loaded last so it wins. */
+@media print {
+  @page { size: A4; margin: 15mm; }
+  html, body, .app, .app-body, .app-main { background: #fff !important; color: #000; }
+  body { font-size: 10.5pt; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .app-main, .page-enter { padding: 0 !important; animation: none !important; opacity: 1 !important; transform: none !important; }
+  .page-enter > * { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .app-sidebar, .app-top, .app-topbar, .app-tabs, .app-overlay, .skip-link, .no-print, .notice { display: none !important; }
+  * { box-shadow: none !important; text-shadow: none !important; }
+
+  /* Heading block of a report */
+  .print-only { display: block; }
+  .print-head { display: flex !important; justify-content: space-between; align-items: flex-end; gap: 10mm;
+    margin: 0 0 7mm; padding-bottom: 4mm; border-bottom: 1.5pt solid #000; }
+  .print-head p { margin: 0; }
+  .print-coop { font-family: var(--font-display); font-size: 17pt; font-weight: 700; }
+  .print-title { margin-top: 1mm !important; font-size: 11pt; color: #333; }
+  .print-meta { font-size: 9pt; color: #444; white-space: nowrap; }
+
+  /* Totals: one even row of boxes */
+  .stats, .stats-four { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 0 0 7mm; }
+  .stats-three { grid-template-columns: repeat(3, 1fr); }
+  .stat, .stat-hero { background: #fff !important; color: #000; border: .6pt solid #777; border-radius: 0; padding: 3mm 3.5mm; break-inside: avoid; }
+  .stat-hero { background: #eee !important; border: 1.2pt solid #000; grid-column: auto; }
+  .stat-hero::before { display: none; }
+  .stat-label, .stat-hero .stat-label { margin: 0; font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #333; }
+  .stat-value, .stat-hero .stat-value { margin: 1.5mm 0 1mm; font-size: 15pt; color: #000; }
+  .stat-unit { font-size: 9pt; }
+  .stat-note, .stat-hero .stat-note { font-size: 8.5pt; color: #444; }
+
+  /* Sections */
+  .dpanel, .report-block { background: none !important; border: 0 !important; border-radius: 0; padding: 0 !important; margin: 0 0 8mm; }
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; margin: 0 0 2.5mm; break-after: avoid; }
+  .panel-head h2 { margin: 0; font-size: 12pt; color: #000; }
+  .panel-head p { margin: 0; font-size: 9pt; color: #444; }
+
+  /* Tables */
+  .table { width: 100%; border: 0 !important; border-collapse: collapse; border-radius: 0; background: none !important; font-size: 9.5pt; }
+  .table thead { display: table-header-group; }
+  .table tr { break-inside: avoid; }
+  .table th, .table td { padding: 1.8mm 2.5mm; color: #000; background: none !important; vertical-align: top; }
+  .table thead th { position: static; background: #eee !important; font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    border-top: 1.2pt solid #000; border-bottom: 1.2pt solid #000; }
+  .table tbody th, .table tbody td { border-bottom: .5pt solid #bbb; font-weight: 400; }
+  .table tbody th.cell-main { font-weight: 600; }
+  .table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .table .num-strong { font-weight: 700; }
+  .table tfoot th, .table tfoot td { border-top: 1.2pt solid #000; border-bottom: 1.2pt solid #000; font-weight: 700; }
+  .cell-sub { color: #444; }
+
+  /* Receipt: a ruled slip in the middle of the page */
+  .report .receipt { max-width: 135mm; margin: 6mm auto 0; padding: 8mm !important; border: 1.2pt solid #000 !important; background: #fff !important; }
+  .receipt-head { border-bottom: 1.5pt solid #000; padding-bottom: 4mm; margin-bottom: 3mm; }
+  .receipt .print-coop { font-size: 14pt; }
+  .receipt-kind, .receipt-no span, .receipt-foot { color: #333; }
+  .receipt-no strong { font-size: 12pt; }
+  .slip-row { padding: 2mm 0; border-top: .5pt solid #bbb; }
+  .slip-row dt { color: #333; }
+  .slip-row dd { color: #000; }
+  .receipt-total { margin-top: 4mm; padding: 3mm 4mm; border: 1.2pt solid #000; border-radius: 0; background: #eee !important; }
+  .receipt-total strong { font-size: 13pt; }
+  .receipt-foot { margin-top: 4mm; font-size: 8.5pt; }
+  .alert { border: 1pt solid #000; color: #000; background: #fff !important; padding: 2mm 3mm; }
+}

@@ -1,0 +1,12 @@
+# Production image for the hosted demo: builds the React app, then serves it with Caddy, which also
+# gets and renews the HTTPS certificate and forwards /api to the backend (NFR 12).
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv

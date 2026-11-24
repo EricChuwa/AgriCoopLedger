@@ -1,0 +1,22 @@
+# {$DOMAIN} is the public host name, for example agricoop.example.com. Caddy obtains a Let's Encrypt
+# certificate for it automatically and redirects HTTP to HTTPS. Use DOMAIN=localhost to try it locally
+# with Caddy's own test certificate.
+{$DOMAIN:localhost} {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+	}
+}

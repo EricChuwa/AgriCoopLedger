@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create your account | AgriCoopLedger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+
+    <aside class="brand">
+      <a class="wordmark" href="#">Agri<span>Coop</span>Ledger</a>
+
+      <div>
+        <h2>One ledger for every delivery and payment.</h2>
+        <p class="lede">Record what each farmer delivers, see what is owed, and keep a payment history your members can trust.</p>
+      </div>
+
+      <!-- Sample data, for the theme preview only -->
+      <section class="sheet" aria-label="Sample ledger page">
+        <h3>Collection day <small>Tuesday, maize</small></h3>
+        <ul class="entries">
+          <li><span class="who"><span>J. Mukamana</span><span class="pill paid">Paid</span></span><span class="kg">42 kg</span><span class="amt">12,600</span></li>
+          <li><span class="who"><span>E. Habimana</span><span class="pill owed">Owed</span></span><span class="kg">65 kg</span><span class="amt">19,500</span></li>
+          <li><span class="who"><span>C. Uwimana</span><span class="pill paid">Paid</span></span><span class="kg">38 kg</span><span class="amt">11,400</span></li>
+          <li><span class="who"><span>P. Niyonsenga</span><span class="pill owed">Owed</span></span><span class="kg">80 kg</span><span class="amt">24,000</span></li>
+          <li class="total"><span>Total, RWF</span><span class="kg">225 kg</span><span class="amt">67,500</span></li>
+        </ul>
+      </section>
+    </aside>
+
+    <main class="panel">
+      <div class="card" id="card">
+
+        <div class="intro">
+          <h1>Create your account</h1>
+          <p class="sub">For cooperative managers, accountants and collection agents.</p>
+        </div>
+
+        <form id="signup" novalidate>
+          <div class="field" data-field="name">
+            <label for="name">Full name</label>
+            <input id="name" name="name" type="text" autocomplete="name" aria-describedby="name-error">
+            <p class="error" id="name-error" role="alert"></p>
+          </div>
+
+          <div class="field" data-field="phone">
+            <label for="phone">Phone number</label>
+            <div class="phone">
+              <span class="prefix" aria-hidden="true">+250</span>
+              <input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="788 123 456" aria-describedby="phone-hint phone-error">
+            </div>
+            <p class="hint" id="phone-hint">You will use this number to sign in.</p>
+            <p class="error" id="phone-error" role="alert"></p>
+          </div>
+
+          <div class="field" data-field="coop">
+            <label for="coop">Cooperative name</label>
+            <input id="coop" name="coop" type="text" autocomplete="organization" aria-describedby="coop-error">
+            <p class="error" id="coop-error" role="alert"></p>
+          </div>
+
+          <div class="field" data-field="role">
+            <label for="role">Your role</label>
+            <select id="role" name="role" aria-describedby="role-error">
+              <option value="">Select a role</option>
+              <option>Manager</option>
+              <option>Accountant</option>
+              <option>Collection agent</option>
+            </select>
+            <p class="error" id="role-error" role="alert"></p>
+          </div>
+
+          <div class="field" data-field="password">
+            <label for="password">Password</label>
+            <div class="pw">
+              <input id="password" name="password" type="password" autocomplete="new-password" aria-describedby="password-hint password-error">
+              <button type="button" id="toggle" aria-controls="password" aria-pressed="false">Show</button>
+            </div>
+            <p class="hint" id="password-hint">At least 8 characters.</p>
+            <p class="error" id="password-error" role="alert"></p>
+          </div>
+
+          <div class="field" data-field="confirm">
+            <label for="confirm">Confirm password</label>
+            <input id="confirm" name="confirm" type="password" autocomplete="new-password" aria-describedby="confirm-error">
+            <p class="error" id="confirm-error" role="alert"></p>
+          </div>
+
+          <button class="submit" type="submit">Create account</button>
+          <p class="alt">Already have an account? <a href="#">Sign in</a></p>
+        </form>
+
+        <div class="done" role="status" aria-live="polite">
+          <div class="tick" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#002626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          </div>
+          <h1>Account created</h1>
+          <p id="done-text"></p>
+          <a class="submit" href="#">Sign in</a>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+  <script src="signup.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Hosted demo with HTTPS (NFR 12). Use it on top of the normal file:
+#   DOMAIN=agricoop.example.com SECRET_KEY=<long random value> \
+#   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build web
+# The domain must point at this server and ports 80 and 443 must be open for the certificate.
+services:
+  backend:
+    environment:
+      COOKIE_SECURE: "true"          # the session cookie is only ever sent over HTTPS
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY to a long random value}
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+    depends_on:
+      - backend
+
+volumes:
+  caddy_data:

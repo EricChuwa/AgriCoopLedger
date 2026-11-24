@@ -1,0 +1,66 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agri}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agri}
+      POSTGRES_DB: ${POSTGRES_DB:-agricoopledger}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agri} -d ${POSTGRES_DB:-agricoopledger}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-agri}:${POSTGRES_PASSWORD:-agri}@db:5432/${POSTGRES_DB:-agricoopledger}
+      SECRET_KEY: ${SECRET_KEY:-dev-only-change-me}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_API_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  # Daily database backup (NFR 5). Writes a compressed dump to ./backups and keeps the last 14 days.
+  backup:
+    image: postgres:16
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-agri}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-agri}
+      PGDATABASE: ${POSTGRES_DB:-agricoopledger}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          pg_dump --format=custom --file=/backups/agricoop-$$(date +%Y%m%d-%H%M%S).dump
+          find /backups -name 'agricoop-*.dump' -mtime +14 -delete
+          sleep 86400
+        done
+
+volumes:
+  pgdata:
