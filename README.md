@@ -4,7 +4,9 @@ A record-keeping system for agricultural cooperatives in Rwanda. It replaces pap
 
 > Status: built to SRS v2.2 (FR 1 to 12, NFR, BR) for the course prototype, with the documented gaps listed below. The front end talks to the real API and database. It uses synthetic seed data only. A demo copy is hosted on Render (see Hosted demo on Render).
 
-Docs: [user guide](docs/user-guide.md) (SRS 2.6) and [technical briefing](docs/TECHNICAL_BRIEFING.md) (how it is built and why).
+Live demo: https://agricoopledger.onrender.com/ (the first load can take about 30 seconds if the service was asleep). Sign in with `aline`, `patrick` or `claudine`, password `harvest2026`.
+
+Docs: [user guide](docs/user-guide.md) (SRS 2.6), [technical briefing](docs/TECHNICAL_BRIEFING.md) (how it is built and why), [SRS v2.2](docs/AgriCoopLedger_SRS_v2.2.docx) and the [diagrams](docs/diagrams/) (draw.io files for the use case, class, activity and sequence diagrams).
 
 ## Problem
 
@@ -66,7 +68,9 @@ Money is whole RWF integers, never floats.
 backend/app/        FastAPI app: models, schemas, routers, services, seed
 backend/tests/      pytest suite
 frontend/src/       React app
-docs/               SRS and architecture design
+scripts/            Playwright browser checks (e2e_smoke.py, e2e_new.py)
+docs/               SRS v2.2, user guide, technical briefing, diagrams, Render steps
+render.yaml         Render Blueprint (web service and PostgreSQL)
 docker-compose.yml  database, backend, frontend, daily backup
 ```
 
@@ -98,9 +102,7 @@ Sign in with a username and the password `harvest2026`:
 
 `python -m app.seed --reset` rebuilds the demo cooperative.
 
-Or sign up on the site. A new cooperative name creates the cooperative and makes you its Manager. A name that is already registered sends a request to that cooperative's Manager, who approves it with a role (or declines it) under Staff. The person cannot sign in until the Manager approves.
-
-The database now has a `users.approval` column. If you have an older database, reset it as described below before running the new code.
+Or sign up on the site (the Sign in page links to sign up). A new cooperative name creates the cooperative and makes you its Manager. A name that is already registered sends a request to that cooperative's Manager, who approves it with a role (or declines it) under Staff. The person cannot sign in until the Manager approves.
 
 Without Docker:
 
@@ -154,6 +156,8 @@ python -m pytest
 ```
 
 The suite (204 tests) checks the money rules against hand-calculated values (for example 12.345 kg at 700 RWF per kg is 8,642 RWF), every role against every route, overpayment, voiding, corrections, the audit trail, cooperative isolation, the 15 minute session limit, duplicate submissions, the audit hash chain, paging, statements, reports and the seed data.
+
+Two Playwright browser scripts sit in `scripts/` (`e2e_smoke.py`, 60 checks, and `e2e_new.py`, 13 checks). They need Chromium, a seeded database, and the backend and Vite dev server running. See the technical briefing for how they were run.
 
 ## Backups
 
