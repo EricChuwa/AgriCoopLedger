@@ -1,9 +1,10 @@
-import { Link } from "react-router-dom";
+import { usePaymentDialog } from "../../context/PaymentDialogContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { fmt } from "../../lib/format.js";
 
 // The farmers the cooperative owes the most, each with a bar and a shortcut to pay.
 export default function LargestBalances({ balances, compact = false }) {
+  const { openPayment } = usePaymentDialog();
   const { user } = useAuth();
   const top = balances[0]?.owed ?? 1;
 
@@ -29,9 +30,9 @@ export default function LargestBalances({ balances, compact = false }) {
                 <span style={{ width: `${Math.max((b.owed / top) * 100, 4)}%` }} />
               </div>
               {user.role === "payment_officer" && (
-                <Link className="balance-pay" to={`/payments/new?farmer=${b.id}`}>
+                <button className="balance-pay" type="button" onClick={() => openPayment(b.id)}>
                   Record payment<span className="visually-hidden"> for {b.name}</span>
-                </Link>
+                </button>
               )}
             </li>
           ))}

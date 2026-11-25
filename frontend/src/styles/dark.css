@@ -3,7 +3,8 @@
 @media screen {
   .app.theme-dark,
   .lp-page.theme-dark,
-  .shell.theme-dark {
+  .shell.theme-dark,
+  dialog.dialog.theme-dark {
     color-scheme: dark;
     --bg: #001a1a;                       /* evergreen, deepened for the page */
     --paper: #052e2e;                    /* cards and tables */
@@ -32,6 +33,17 @@
   .app.theme-dark .dialog::backdrop { background: rgba(0, 10, 10, .7); }
   .app.theme-dark .pill-owed { background: transparent; }
   .app.theme-dark img { filter: none; }
+  /* Pop ups are drawn outside .app (in the browser's top layer), so they carry the theme class themselves */
+  dialog.dialog.theme-dark { background: var(--paper); color: var(--ink); border-color: var(--rule); }
+  dialog.dialog.theme-dark::backdrop { background: rgba(0, 10, 10, .7); }
+  dialog.dialog.theme-dark .btn-primary { box-shadow: 0 3px 0 #5d7d16; }
+  dialog.dialog.theme-dark .btn-danger { color: #1b0a02; }
+  dialog.dialog.theme-dark :focus-visible { outline-color: var(--lime); }
+  dialog.dialog.theme-dark select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1.5l6 6 6-6' fill='none' stroke='%23efe7da' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  dialog.dialog.theme-dark .dialog-x:hover { background: var(--tint-2); }
+  dialog.dialog.theme-dark .record-slip, dialog.dialog.theme-dark .slip { background: var(--paper-hi); }
 }
 
 /* the toggle itself works in both themes */
@@ -40,7 +52,7 @@
 .theme-toggle:hover { background: var(--tint-2); }
 .theme-toggle:focus-visible { outline: 3px solid var(--cayenne); outline-offset: 2px; }
 .theme-toggle svg { transition: transform .35s cubic-bezier(.2, .7, .2, 1); }
-.theme-toggle:active svg { transform: rotate(35deg) scale(.9); }
+.theme-toggle:active svg { transform: rotate(10deg) scale(.95); }
 
 @media screen {
   .app.theme-dark .period-select {

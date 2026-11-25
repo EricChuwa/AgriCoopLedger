@@ -21,9 +21,9 @@ The SRS defines three roles. The server checks the role on every request, so hid
 
 | Role | Can do | Cannot do |
 |---|---|---|
-| Manager | Create and edit staff and assign roles, set prices and produce, correct deliveries, void deliveries and payments, approve or reject correction requests, read and verify the audit log, see reports | Record a delivery or a payment (BR 2) |
-| Collection Clerk | Register and edit farmers, record deliveries, print delivery receipts, ask a Manager to correct a delivery, read prices | Record payments, void, set prices |
-| Payment Officer | Record payments, print payment receipts, see reports, read prices | Record deliveries, see full national IDs (masked, NFR 14) |
+| Manager | Create and edit staff and assign roles, approve or decline proposed farmers and payment batches, set prices and produce, correct deliveries, void deliveries and payments, approve or reject correction requests, read and verify the audit log, see reports | Record a delivery or a payment (BR 2) |
+| Collection Clerk | Propose and edit farmers, record deliveries, print delivery receipts, ask a Manager to correct a delivery, read prices | Record payments, void, set prices |
+| Payment Officer | Record payments, make payment batches and pay from them, print payment receipts, see reports, read prices | Record deliveries, see full national IDs (masked, NFR 14) |
 
 ## What it does
 
@@ -32,6 +32,9 @@ The SRS defines three roles. The server checks the role on every request, so hid
 - Deliveries store the price in force on their date, so a later price change never rewrites old deliveries. Weight is held as whole grams, value is rounded half up to a whole franc.
 - Balance owed = live deliveries minus live payments. A payment above the balance is refused.
 - Nothing is deleted. A Manager voids an entry or corrects a delivery with a reason, and the old values stay on record. A Clerk can send a correction request, and a Manager approves or rejects it.
+- Farmer enrolment approval: a Clerk proposes a farmer and a Manager approves or declines. A Manager adds farmers directly.
+- Payment batches: a Payment Officer groups farmers' balances into a batch, a Manager approves it, then payments are recorded against it. Part paid and paid are worked out from the payments.
+- Offline deliveries: a Clerk's deliveries are kept on the device when the network is down and sent automatically later, once each.
 - Receipts for deliveries and payments, printable or saved as PDF from the browser.
 - Reports: collection summary by produce, grade and period; farmer statement with opening balance; outstanding balances. Print or save as PDF, or download CSV.
 - Audit log of who did what and when, written in the same database transaction as the change. Read only, and only for a Manager. Entries are chained with SHA-256 hashes, and a Manager can press Check integrity to detect an entry that was edited or removed in the database.
@@ -124,6 +127,8 @@ docker compose up
 docker compose exec backend python -m app.seed
 ```
 
+For a local SQLite file, stop the backend, delete the `.db` file and run `python -m app.seed` again. `--reset` cannot be used on an old file, because it reads the new columns before it wipes anything. The newest changes (farmer enrolment approval and payment batches) added columns and tables, so this reset is needed once more.
+
 Without Docker, delete `backend/agricoop.db` (or whichever SQLite file you use) and run `python -m app.seed` again.
 
 ## Hosted demo with HTTPS (NFR 12)
@@ -170,8 +175,8 @@ docker compose exec -T db pg_restore -U agri -d agricoopledger --clean --if-exis
 
 These are deliberate and stated so nobody has to find them:
 
-- The SRS Appendix B ideas (offline sync, farmer enrolment approval, payment batches, disputes) are not built. The core requirement tables (FR 1 to 7, NFR, BR) are the contract. The SRS contradicts itself in places (it names an Accountant in some sections and a Payment Officer in others, and one section assumes a single rate where another defines grades). The build follows the requirement tables and three roles.
-- Online only. There is no offline mode.
+- Offline entry, farmer enrolment approval and payment batches are built. Disputes, buyer sales and buyer payments are not built. The core requirement tables (FR 1 to 7, NFR, BR) are the contract. The SRS contradicts itself in places (it names an Accountant in some sections and a Payment Officer in others, and one section assumes a single rate where another defines grades). The build follows the requirement tables and three roles.
+- Offline works for the Clerk's deliveries only. There is no service worker, so a page reload without a connection fails. The queue is stored in the browser on that device. A direct payment is still allowed beside batches.
 - Farmers are not paged: the whole farmer list (a few hundred rows) is loaded and filtered in the browser.
 - The audit chain detects edits and removal of entries from the middle of the log. It does not detect removal of the newest entries, and anyone who can rewrite the whole table and recompute every hash could forge it. Keep database access to the administrator.
 - HTTPS (NFR 12) is for the hosted demo only and the Caddy setup is untested. Local runs use HTTP.

@@ -12,6 +12,10 @@ import { useLedger } from "../context/LedgerContext.jsx";
 import { getDashboardData } from "../lib/dashboardData.js";
 import useApiData from "../lib/useApiData.js";
 import Alert from "../components/Alert.jsx";
+import CoopName from "../components/CoopName.jsx";
+import ProduceStrip from "../components/dashboard/ProduceStrip.jsx";
+import PeriodStat from "../components/dashboard/PeriodStat.jsx";
+import "../styles/period-stat.css";
 import { fmt, greeting, kgText, longDate, plural } from "../lib/format.js";
 
 function Stat({ label, value, unit, note, icon }) {
@@ -19,7 +23,6 @@ function Stat({ label, value, unit, note, icon }) {
     <div className="stat dstat">
       <div className="stat-top">
         <p className="stat-label">{label}</p>
-        <span className="chip-icon"><Icon name={icon} size={18} /></span>
       </div>
       <p className="stat-value">
         {value}
@@ -45,7 +48,7 @@ export default function Dashboard() {
   if (!data) {
     return (
       <div className="dash">
-        <header className="page-head"><div><h1>{greeting(now)}, {firstName}</h1><p>{ledger.coop.name} &middot; {longDate(now)}</p></div></header>
+        <header className="page-head"><div><h1>{greeting(now)}, {firstName}</h1><p><CoopName name={ledger.coop.name} /> &middot; {longDate(now)}</p></div></header>
         {error ? <Alert>{error}</Alert> : <p className="results" aria-live="polite">Loading</p>}
       </div>
     );
@@ -64,39 +67,34 @@ export default function Dashboard() {
       { to: "/audit", label: "Audit log", icon: "info" },
     ],
     clerk: [
-      { to: "/deliveries/new", label: "Record delivery", icon: "plus" },
-      { to: "/farmers/new", label: "Add farmer", icon: "users" },
-      { to: "/farmers", label: "Farmers", icon: "list" },
+      { to: "/deliveries/new", label: "Record delivery", icon: "plus", dialog: "delivery" },
+      { to: "/farmers?add=1", label: "Add farmer", icon: "user" },
+      { to: "/farmers", label: "Farmers", icon: "users" },
       { to: "/deliveries", label: "Deliveries", icon: "package" },
     ],
     payment_officer: [
-      { to: "/payments/new", label: "Record payment", icon: "plus" },
+      { to: "/payments/new", label: "Record payment", icon: "plus", dialog: "payment" },
       { to: "/payments", label: "Payments", icon: "cash" },
       { to: "/reports", label: "Reports", icon: "chart" },
       { to: "/farmers", label: "Farmers", icon: "users" },
     ],
   }[role];
 
+  // Tiles with a period menu are { metric, defaultPeriod }. A tile that is not about a period stays a plain card.
   const stats = {
-    manager: [
-      { label: "Received today", value: fmt(data.deliveredTodayKg), unit: "kg", icon: "scale", note: `${data.deliveriesToday} ${plural(data.deliveriesToday, "delivery", "deliveries")}` },
-      { label: "Paid today", value: fmt(data.paidToday), unit: "RWF", icon: "cash", note: "to farmers" },
-      { label: "Farmers this week", value: data.farmersThisWeek, icon: "users", note: "delivered produce" },
-    ],
-    clerk: [
-      { label: "Deliveries today", value: data.deliveriesToday, icon: "package", note: "recorded so far" },
-      { label: "Received this week", value: fmt(weekKg), unit: "kg", icon: "scale", note: "last 7 days" },
-      { label: "Farmers this week", value: data.farmersThisWeek, icon: "users", note: "delivered produce" },
-    ],
+    manager: [{ metric: "received" }, { metric: "paid" }, { metric: "farmers", defaultPeriod: "week" }],
+    clerk: [{ metric: "deliveries" }, { metric: "received", defaultPeriod: "week" }, { metric: "farmers", defaultPeriod: "week" }],
     payment_officer: [
-      { label: "Paid today", value: fmt(data.paidToday), unit: "RWF", icon: "cash", note: "to farmers" },
+      { metric: "paid" },
       { label: "Farmers owed", value: data.farmersOwed, icon: "users", note: "with a balance" },
-      { label: "Received today", value: fmt(data.deliveredTodayKg), unit: "kg", icon: "scale", note: `${data.deliveriesToday} ${plural(data.deliveriesToday, "delivery", "deliveries")}` },
+      { metric: "received" },
     ],
   }[role];
 
   const attention = [];
   if (data.pendingCorrections > 0) attention.push({ to: "/corrections", text: `${data.pendingCorrections} correction ${plural(data.pendingCorrections, "request", "requests")} to decide` });
+  if (data.farmersWaiting > 0) attention.push({ to: "/farmers", text: `${data.farmersWaiting} ${plural(data.farmersWaiting, "farmer", "farmers")} waiting for approval` });
+  if (data.batchesWaiting > 0) attention.push({ to: "/batches", text: `${data.batchesWaiting} payment ${plural(data.batchesWaiting, "batch", "batches")} to decide` });
   if (waitingToJoin > 0) attention.push({ to: "/staff", text: `${waitingToJoin} ${plural(waitingToJoin, "person", "people")} asking to join` });
 
   return (
@@ -104,9 +102,11 @@ export default function Dashboard() {
       <header className="page-head">
         <div>
           <h1>{greeting(now)}, {firstName}</h1>
-          <p>{ledger.coop.name} &middot; {longDate(now)}</p>
+          <p><CoopName name={ledger.coop.name} /> &middot; {longDate(now)}</p>
         </div>
       </header>
+
+      <ProduceStrip produce={ledger.produce} canEdit={role === "manager"} />
 
       <div className="dgrid">
         <div className="dcol dcol-left">
@@ -114,7 +114,6 @@ export default function Dashboard() {
             <section className="dcard-hero" aria-labelledby="hero-title">
               <div className="stat-top">
                 <p className="stat-label" id="hero-title">Received today</p>
-                <span className="chip-icon"><Icon name="scale" size={18} /></span>
               </div>
               <p className="stat-value">{fmt(data.deliveredTodayKg)}<span className="stat-unit"> kg</span></p>
               <p className="stat-note">{data.deliveriesToday} {plural(data.deliveriesToday, "delivery", "deliveries")} today</p>
@@ -124,7 +123,6 @@ export default function Dashboard() {
             <section className="dcard-hero" aria-labelledby="owed-title">
               <div className="stat-top">
                 <p className="stat-label" id="owed-title">Owed to farmers</p>
-                <span className="chip-icon"><Icon name="wallet" size={18} /></span>
               </div>
               <p className="stat-value">{fmt(data.totalOwed)}<span className="stat-unit"> RWF</span></p>
               <p className="stat-note">across {data.farmersOwed} {plural(data.farmersOwed, "farmer", "farmers")}</p>
@@ -170,7 +168,9 @@ export default function Dashboard() {
 
         <div className="dcol dcol-mid">
           <div className="dstats">
-            {stats.map((st) => <Stat key={st.label} {...st} />)}
+            {stats.map((st) => (st.metric
+              ? <PeriodStat key={st.metric} metric={st.metric} defaultPeriod={st.defaultPeriod} version={ledger.version} />
+              : <Stat key={st.label} {...st} />))}
           </div>
 
           <WeeklyChart week={data.week} />
@@ -182,7 +182,7 @@ export default function Dashboard() {
                 <Link className="btn btn-outline btn-small" to="/payments">View all<span className="visually-hidden"> payments</span></Link>
               </div>
               {data.recentPayments.length === 0 ? <p className="empty">No payments yet.</p> : (
-                <table className="table table-numbers table-flat">
+                <div className="table-scroll"><table className="table table-numbers table-flat">
                   <thead><tr>
                     <th scope="col">Farmer</th><th scope="col" className="num">Amount</th><th scope="col" className="num">Date</th>
                   </tr></thead>
@@ -195,7 +195,7 @@ export default function Dashboard() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </section>
           ) : (
@@ -205,7 +205,7 @@ export default function Dashboard() {
                 <Link className="btn btn-outline btn-small" to="/deliveries">View all<span className="visually-hidden"> deliveries</span></Link>
               </div>
               {data.recentDeliveries.length === 0 ? <p className="empty">No deliveries yet.</p> : (
-                <table className="table table-numbers table-flat">
+                <div className="table-scroll"><table className="table table-numbers table-flat">
                   <thead><tr>
                     <th scope="col">Farmer</th><th scope="col" className="num">Weight</th>
                     <th scope="col" className="num">Value</th><th scope="col" className="num">Date</th>
@@ -220,7 +220,7 @@ export default function Dashboard() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </section>
           )}

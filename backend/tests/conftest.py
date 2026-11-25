@@ -47,7 +47,7 @@ FAR_PAST = "2020-01-01"
 
 class World:
     """One cooperative with a Manager, a Collection Clerk and a Payment Officer already signed in,
-    one produce type (Maize, Grade A 300 RWF per kg, Grade B 250) and two farmers."""
+    one produce type (Maize, bought at 300 and 250 RWF per kg, sold at 400 and 350) and two farmers."""
 
     def __init__(self, make_client):
         self.make_client = make_client
@@ -65,6 +65,10 @@ class World:
             {"grade": "B", "price_per_kg": 250, "effective_from": FAR_PAST}]})
         assert r.status_code == 201, r.text
         self.maize = r.json()["id"]
+        for grade, price in (("A", 400), ("B", 350)):  # the Manager's selling prices
+            r = self.manager.post(f"/api/produce/{self.maize}/selling-prices",
+                                  json={"grade": grade, "price_per_kg": price, "effective_from": FAR_PAST})
+            assert r.status_code == 201, r.text
 
         self.farmer = self.add_farmer("Immaculee Uwimana", "1199080012345678", "0788410231")["id"]
         self.farmer2 = self.add_farmer("Jean Bosco Habimana", "1198570098765432", "0788522190")["id"]
@@ -80,9 +84,12 @@ class World:
         return client
 
     def add_farmer(self, name, national_id, phone=""):
+        """A Clerk proposes the farmer and the Manager approves, so the farmer can be used straight away."""
         r = self.clerk.post("/api/farmers", json={"full_name": name, "national_id": national_id, "phone": phone})
         assert r.status_code == 201, r.text
-        return r.json()
+        approved = self.manager.post(f"/api/farmers/{r.json()['id']}/approve", json={})
+        assert approved.status_code == 200, approved.text
+        return approved.json()
 
     def deliver(self, farmer=None, kg=100, grade="A", date=None):
         body = {"farmer_id": farmer or self.farmer, "produce_id": self.maize, "grade": grade, "weight_kg": kg}

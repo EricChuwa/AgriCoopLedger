@@ -18,6 +18,7 @@ from app.models import (
     Correction, Delivery, Farmer, ProduceType, User,
 )
 from app.schemas import CorrectIn, DeliveryIn, DeliveryOut, DeliveryPage, Reason, VoidInfo
+from app.statuses import annotate_deliveries
 from app.services import balance_of, fmt_rwf, kg_of, price_on, to_grams, today, value_of
 
 router = APIRouter(prefix="/api/deliveries", tags=["deliveries"])
@@ -50,7 +51,7 @@ def _flags(db: Session, cooperative_id: int, delivery_ids: list[int] | None = No
 
 def _one(db: Session, d: Delivery) -> DeliveryOut:
     corrected, pending = _flags(db, d.cooperative_id, [d.id])
-    return delivery_out(d, d.id in corrected, d.id in pending)
+    return annotate_deliveries(db, d.cooperative_id, [delivery_out(d, d.id in corrected, d.id in pending)])[0]
 
 
 def _check_date(value: date | None, field: str) -> date:
@@ -112,7 +113,8 @@ def list_deliveries(
         .offset((page - 1) * page_size).limit(page_size)).all()
     corrected, pending = _flags(db, user.cooperative_id, [d.id for d in rows])
     return DeliveryPage(
-        items=[delivery_out(d, d.id in corrected, d.id in pending) for d in rows],
+        items=annotate_deliveries(db, user.cooperative_id,
+                                  [delivery_out(d, d.id in corrected, d.id in pending) for d in rows]),
         total=total, page=page, page_size=page_size,
         live_count=live_count, live_kg=kg_of(int(live_grams)), live_value=int(live_value))
 

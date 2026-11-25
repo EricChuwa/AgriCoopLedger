@@ -2,7 +2,7 @@
 
 
 def test_register_farmer_with_national_id_and_membership_date(world):
-    res = world.clerk.post("/api/farmers", json={
+    res = world.manager.post("/api/farmers", json={
         "full_name": "Alice Mukamana", "national_id": "1 2000 8 0055555 5 55".replace(" ", ""),
         "phone": "0789 317 744", "village": "Mukura", "member_since": "2024-03-15"})
     assert res.status_code == 201

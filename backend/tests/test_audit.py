@@ -18,7 +18,7 @@ def test_every_change_writes_an_entry_with_who_and_when(world):
     entries = _log(world)
     by_action = {e["action"]: e for e in entries}
     for action in ("delivery.recorded", "payment.recorded", "delivery.corrected", "payment.voided",
-                   "delivery.voided", "price.set", "farmer.created", "user.created", "produce.created"):
+                   "delivery.voided", "price.set", "farmer.proposed", "farmer.approved", "user.created", "produce.created"):
         assert action in by_action, action
         assert by_action[action]["created_at"]
     assert by_action["delivery.recorded"]["user_name"] == "Patrick Habineza"

@@ -1,12 +1,19 @@
 import { Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell.jsx";
 import AuthLayout from "./components/AuthLayout.jsx";
+import TitleManager from "./components/TitleManager.jsx";
 import { GuestOnly, RequireAuth, RequireRole } from "./components/RouteGuards.jsx";
 import Account from "./pages/Account.jsx";
 import AddFarmer from "./pages/AddFarmer.jsx";
 import AddStaff from "./pages/AddStaff.jsx";
 import AuditLog from "./pages/AuditLog.jsx";
+import BatchDetail from "./pages/BatchDetail.jsx";
+import Batches from "./pages/Batches.jsx";
+import NewBatch from "./pages/NewBatch.jsx";
 import Corrections from "./pages/Corrections.jsx";
+import Sales from "./pages/Sales.jsx";
+import Disputes from "./pages/Disputes.jsx";
+import Buy from "./pages/Buy.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Deliveries from "./pages/Deliveries.jsx";
 import EditFarmer from "./pages/EditFarmer.jsx";
@@ -27,8 +34,11 @@ import Signup from "./pages/Signup.jsx";
 
 export default function App() {
   return (
+    <>
+    <TitleManager />
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/buy" element={<Buy />} />
 
       <Route element={<GuestOnly />}>
         <Route element={<AuthLayout />}>
@@ -46,6 +56,8 @@ export default function App() {
           <Route path="/farmers/:id" element={<FarmerDetail />} />
           <Route path="/deliveries" element={<Deliveries />} />
           <Route path="/payments" element={<Payments />} />
+          <Route path="/disputes" element={<Disputes />} />
+          <Route path="/sales" element={<Sales />} />
           <Route path="/receipts/:kind/:id" element={<Receipt />} />
 
           <Route element={<RequireRole roles={["manager", "clerk"]} />}>
@@ -61,6 +73,11 @@ export default function App() {
           </Route>
           <Route element={<RequireRole roles={["manager", "payment_officer"]} />}>
             <Route path="/reports" element={<Reports />} />
+            <Route path="/batches" element={<Batches />} />
+            <Route path="/batches/:id" element={<BatchDetail />} />
+          </Route>
+          <Route element={<RequireRole roles={["payment_officer"]} />}>
+            <Route path="/batches/new" element={<NewBatch />} />
           </Route>
           <Route element={<RequireRole roles={["manager"]} />}>
             <Route path="/staff" element={<Staff />} />
@@ -74,5 +91,6 @@ export default function App() {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </>
   );
 }

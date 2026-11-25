@@ -1,0 +1,27 @@
+# Add this job under `services:` in render.yaml (same indentation) once the site is live and the Backblaze
+# bucket and key exist, then push. Render cron jobs have no free plan and the Blueprint then asks for a card.
+# See docs/DEPLOY_RENDER.md for the Backblaze steps.
+  # Daily database backup to Backblaze B2. Render cron jobs have no free plan.
+  # 01:00 UTC is 03:00 in Kigali.
+  - type: cron
+    name: agricoopledger-backup
+    runtime: docker
+    plan: starter
+    schedule: "0 1 * * *"
+    dockerfilePath: ./Dockerfile.backup
+    dockerContext: .
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agricoopledger-db
+          property: connectionString
+      - key: B2_ENDPOINT
+        sync: false
+      - key: B2_BUCKET
+        sync: false
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false
+      - key: RETAIN_DAYS
+        value: "14"

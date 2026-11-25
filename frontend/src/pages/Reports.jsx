@@ -153,7 +153,7 @@ export default function Reports() {
           <section className="dpanel report-block" aria-labelledby="by-produce">
             <div className="panel-head"><h2 id="by-produce">By produce and grade</h2><p>{period}</p></div>
             {summary.byProduce.length === 0 ? <p className="empty">No deliveries in this period.</p> : (
-              <table className="table table-numbers">
+              <div className="table-scroll"><table className="table table-numbers">
                 <thead><tr><th scope="col">Produce</th><th scope="col" className="num">Deliveries</th><th scope="col" className="num">Weight</th><th scope="col" className="num">Value</th></tr></thead>
                 <tbody>
                   {summary.byProduce.map((r) => (
@@ -165,14 +165,14 @@ export default function Reports() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </section>
 
           <section className="dpanel report-block" aria-labelledby="by-farmer">
             <div className="panel-head"><h2 id="by-farmer">By farmer</h2><p>{summary.byFarmer.length} {plural(summary.byFarmer.length, "farmer", "farmers")} with activity</p></div>
             {summary.byFarmer.length === 0 ? <p className="empty">No activity in this period.</p> : (
-              <table className="table table-numbers">
+              <div className="table-scroll"><table className="table table-numbers">
                 <thead><tr><th scope="col">Farmer</th><th scope="col" className="num">Weight</th><th scope="col" className="num">Delivered</th><th scope="col" className="num">Paid</th><th scope="col" className="num">Owed now</th></tr></thead>
                 <tbody>
                   {summary.byFarmer.map((r) => (
@@ -185,7 +185,7 @@ export default function Reports() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </section>
         </>
@@ -208,7 +208,7 @@ export default function Reports() {
             <p>{outstanding.length} {plural(outstanding.length, "farmer is", "farmers are")} owed {fmt(outstandingTotal)} RWF in total</p>
           </div>
           {outstanding.length === 0 ? <p className="empty">Every farmer is paid up.</p> : (
-            <table className="table table-numbers">
+            <div className="table-scroll"><table className="table table-numbers">
               <thead><tr><th scope="col">Farmer</th><th scope="col">Phone</th><th scope="col" className="num">Owed</th></tr></thead>
               <tbody>
                 {outstanding.map((f) => (
@@ -220,7 +220,7 @@ export default function Reports() {
                 ))}
               </tbody>
               <tfoot><tr><th scope="row" colSpan={2}>Total owed</th><td className="num num-strong">{fmt(outstandingTotal)} RWF</td></tr></tfoot>
-            </table>
+            </table></div>
           )}
         </section>
       )}

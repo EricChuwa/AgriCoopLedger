@@ -12,12 +12,14 @@ from app.database import get_db
 from app.deps import get_current_user, require_role
 from app.helpers import get_in_coop
 from app.models import (
-    CORRECTION_PENDING, ROLE_MANAGER, ROLE_PAYMENT_OFFICER, Correction, Delivery, Farmer, Payment, ProduceType, User,
+    BATCH_SUBMITTED, CORRECTION_PENDING, ENROL_PENDING, ROLE_MANAGER, ROLE_PAYMENT_OFFICER, Correction, Delivery,
+    Farmer, Payment, PaymentBatch, ProduceType, User,
 )
+from app.statuses import annotate_deliveries
 from app.routers.deliveries import _flags, delivery_out, receipt_no as delivery_receipt
 from app.routers.payments import METHOD_LABEL, payment_out, receipt_no as payment_receipt
 from app.schemas import (
-    DashboardOut, LargestBalance, ProduceMixOut, ProduceShare, StatementOut, StatementRow, SummaryFarmerRow, SummaryOut, SummaryProduceRow, WeekDay,
+    DashboardOut, LargestBalance, ProduceMixOut, ProduceShare, StatementOut, StatementRow, SummaryFarmerRow, SummaryOut, SummaryProduceRow, TotalsOut, WeekDay,
 )
 from app.services import balances_for, kg_of, today
 
@@ -121,12 +123,14 @@ def summary(
         by_produce=by_produce, by_farmer=by_farmer)
 
 
-PERIOD_LABEL = {"week": "This week", "month": "This month", "last_month": "Last month",
+PERIOD_LABEL = {"day": "Today", "week": "This week", "month": "This month", "last_month": "Last month",
                 "quarter": "This quarter", "last_quarter": "Last quarter"}
 
 
 def period_bounds(now: date, period: str) -> tuple[date, date]:
     """First and last day (inclusive) of a named period. The current ones end today. A week is the last 7 days."""
+    if period == "day":
+        return now, now
     if period == "week":
         return now - timedelta(days=6), now
     if period == "month":
@@ -160,6 +164,24 @@ def produce_mix(
                          total_kg=kg_of(total), items=[ProduceShare(name=n, kg=kg_of(int(g))) for n, g in rows[:5]])
 
 
+@router.get("/api/dashboard/totals", response_model=TotalsOut)
+def dashboard_totals(
+    period: Literal["day", "week", "month", "last_month", "quarter", "last_quarter"] = Query("day"),
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """Produce received, payments made and farmers who delivered over a chosen period (the dashboard tiles)."""
+    coop = user.cooperative_id
+    start, end = period_bounds(today(), period)
+    d_where = (Delivery.cooperative_id == coop, LIVE_D, Delivery.delivery_date >= start, Delivery.delivery_date <= end)
+    count, grams, farmers = db.execute(
+        select(func.count(Delivery.id), func.coalesce(func.sum(Delivery.weight_grams), 0),
+               func.count(func.distinct(Delivery.farmer_id))).where(*d_where)).one()
+    paid = db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(
+        Payment.cooperative_id == coop, LIVE_P, Payment.payment_date >= start, Payment.payment_date <= end)) or 0
+    return TotalsOut(period=period, label=PERIOD_LABEL[period], date_from=start, date_to=end,
+                     received_kg=kg_of(int(grams)), deliveries=int(count), paid=int(paid), farmers=int(farmers))
+
+
 @router.get("/api/dashboard", response_model=DashboardOut)
 def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     coop = user.cooperative_id
@@ -185,10 +207,14 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
         .join(ProduceType, ProduceType.id == Delivery.produce_id)
         .where(Delivery.cooperative_id == coop, LIVE_D, Delivery.delivery_date >= week_start, Delivery.delivery_date <= now)
         .group_by(ProduceType.name).order_by(func.sum(Delivery.weight_grams).desc()).limit(5)).all()
-    pending = 0
+    pending = farmers_waiting = batches_waiting = 0
     if user.role == ROLE_MANAGER:
         pending = db.scalar(select(func.count(Correction.id)).where(
             Correction.cooperative_id == coop, Correction.status == CORRECTION_PENDING)) or 0
+        farmers_waiting = db.scalar(select(func.count(Farmer.id)).where(
+            Farmer.cooperative_id == coop, Farmer.enrolment == ENROL_PENDING)) or 0
+        batches_waiting = db.scalar(select(func.count(PaymentBatch.id)).where(
+            PaymentBatch.cooperative_id == coop, PaymentBatch.status == BATCH_SUBMITTED)) or 0
 
     recent_d = db.scalars(
         select(Delivery).where(Delivery.cooperative_id == coop, LIVE_D)
@@ -205,10 +231,11 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
         total_owed=sum(b for _, b in owing), farmers_owed=len(owing),
         delivered_today_kg=kg_of(int(per_day.get(now, 0))), deliveries_today=today_count, paid_today=int(paid_today),
         farmers_this_week=farmers_week, pending_corrections=pending,
+        farmers_waiting=farmers_waiting, batches_waiting=batches_waiting,
         week=[WeekDay(date=week_start + timedelta(days=i), kg=kg_of(int(per_day.get(week_start + timedelta(days=i), 0))))
               for i in range(7)],
         produce_week=[ProduceShare(name=n, kg=kg_of(int(g))) for n, g in mix],
         largest_balances=[LargestBalance(id=fid, name=names[fid], owed=b) for fid, b in owing[:5]],
-        recent_deliveries=[delivery_out(d, d.id in corrected, d.id in awaiting) for d in recent_d],
+        recent_deliveries=annotate_deliveries(db, coop, [delivery_out(d, d.id in corrected, d.id in awaiting) for d in recent_d]),
         recent_payments=[payment_out(p) for p in recent_p],
     )

@@ -27,6 +27,14 @@ def _rules(w):
         ("get", "/api/payments", None, ALL),
         ("post", "/api/payments", {"farmer_id": w.farmer, "amount": 1, "method": "cash"}, {O}),
         ("get", "/api/corrections", None, {M, C}),
+        ("get", "/api/disputes", None, ALL),
+        ("get", "/api/sales", None, ALL),
+        ("get", "/api/sales/summary", None, ALL),
+        ("get", "/api/buyer-payments", None, ALL),
+        ("get", "/api/orders", None, {M, C}),
+        ("get", "/api/batches", None, {M, O}),
+        ("post", "/api/batches", {"lines": [{"farmer_id": w.farmer, "amount": 1}]}, {O}),
+        ("post", f"/api/farmers/{w.farmer2}/approve", {}, {M}),
     ]
 
 
@@ -45,6 +53,8 @@ def test_every_route_enforces_its_roles(world, role):
         else:
             assert res.status_code == 403, f"{role} must be refused {method.upper()} {path}, got {res.status_code}"
         # Pretend nothing changed so every role faces the same starting data.
+        if res.status_code == 201 and method == "post" and path == "/api/batches":
+            world.manager.post(f"/api/batches/{res.json()['id']}/reject", json={"reason": "test cleanup"})
         if res.status_code in (200, 201) and method == "post" and path == "/api/payments":
             world.manager.post(f"/api/payments/{res.json()['id']}/void", json={"reason": "test cleanup"})
 

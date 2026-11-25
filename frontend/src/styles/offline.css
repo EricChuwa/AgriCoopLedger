@@ -1,0 +1,17 @@
+/* Offline strip and the list of deliveries waiting to be sent (FR 4.9). Uses the semantic tokens, so it follows the theme. */
+.offline-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem;
+  margin: 0 0 1.25rem; padding: .7rem .95rem; border-radius: 10px; border: 1px solid var(--rule); background: var(--tint-2); color: var(--ink); }
+.offline-strip.is-offline { border-color: var(--cayenne); }
+.offline-strip p { margin: 0; flex: 1 1 18rem; }
+.offline-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.queue { margin: 2rem 0 0; padding: 1.25rem; border: 1px solid var(--rule); border-radius: 14px; background: var(--paper); }
+.queue h2 { margin: 0 0 .25rem; font-size: 1.1rem; }
+.queue-lead { margin: 0 0 1rem; color: var(--ink); opacity: .8; }
+.queue ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.queue li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem;
+  padding: .7rem .85rem; border: 1px solid var(--rule); border-radius: 10px; }
+.queue-main { margin: 0; font-weight: 600; }
+.queue-sub { margin: .15rem 0 0; font-size: .92rem; opacity: .8; }
+.queue-error { margin: .25rem 0 0; font-size: .92rem; color: var(--error); }
+.queue-tools { display: flex; gap: .5rem; margin-top: .9rem; flex-wrap: wrap; }

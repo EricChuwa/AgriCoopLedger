@@ -19,8 +19,8 @@ export const NAV_GROUPS = [
     id: "record",
     label: "Record",
     items: [
-      { to: "/deliveries/new", label: "Record delivery", icon: "package", roles: [CLERK] },
-      { to: "/payments/new", label: "Record payment", icon: "cash", roles: [OFFICER] },
+      { to: "/deliveries/new", label: "Record delivery", icon: "package", roles: [CLERK], dialog: "delivery" },
+      { to: "/payments/new", label: "Record payment", icon: "cash", roles: [OFFICER], dialog: "payment" },
     ],
   },
   {
@@ -30,7 +30,10 @@ export const NAV_GROUPS = [
       { to: "/farmers", label: "Farmers", icon: "users", roles: ALL },
       { to: "/deliveries", label: "Deliveries", icon: "list", roles: ALL, end: true },
       { to: "/payments", label: "Payments", icon: "receipt", roles: ALL, end: true },
+      { to: "/batches", label: "Payment batches", icon: "wallet", roles: [MANAGER, OFFICER] },
       { to: "/corrections", label: "Corrections", icon: "check", roles: [MANAGER, CLERK] },
+      { to: "/sales", label: "Sales", icon: "cash", roles: ALL },
+      { to: "/disputes", label: "Disputes", icon: "scale", roles: ALL },
     ],
   },
   {
@@ -63,13 +66,13 @@ export const BOTTOM_TABS = {
   ],
   [CLERK]: [
     { to: "/dashboard", label: "Home", icon: "grid" },
-    { to: "/deliveries/new", label: "Record", icon: "package" },
+    { to: "/deliveries/new", label: "Record", icon: "package", dialog: "delivery" },
     { to: "/farmers", label: "Farmers", icon: "users" },
     { to: "/deliveries", label: "Deliveries", icon: "list" },
   ],
   [OFFICER]: [
     { to: "/dashboard", label: "Home", icon: "grid" },
-    { to: "/payments/new", label: "Pay", icon: "cash" },
+    { to: "/payments/new", label: "Pay", icon: "cash", dialog: "payment" },
     { to: "/farmers", label: "Farmers", icon: "users" },
     { to: "/payments", label: "Payments", icon: "receipt" },
   ],

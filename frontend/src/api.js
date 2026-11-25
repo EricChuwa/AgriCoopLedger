@@ -45,6 +45,7 @@ export async function api(path, { method = "GET", body, params } = {}) {
       const loc = detail[0].loc?.[detail[0].loc.length - 1];
       throw new ApiError(String(detail[0].msg).replace(/^Value error, /, ""), { status: res.status, field: typeof loc === "string" ? loc : undefined });
     }
+    if (res.status >= 500) throw new ApiError("The server had a problem. Try again, and tell the administrator if it keeps happening.", { status: res.status });
     throw new ApiError("Check the form and try again.", { status: res.status });
   }
   return data;

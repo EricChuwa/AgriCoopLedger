@@ -68,18 +68,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { box-shadow: 
   .table tbody tr:nth-child(n+8) { animation-delay: .22s; }
 
   .btn { transition: transform .12s var(--ease-out), box-shadow .12s var(--ease-out), background-color .15s; }
-  .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--edge); }
-  .btn-primary:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--edge); }
+  .btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--edge); }
+  .btn-primary:active { transform: translate(1px, 1px); box-shadow: 0 0 0 var(--edge); }
 
   .row-action { transition: color .15s, transform .15s var(--ease-out); }
   .row-action:hover { color: var(--cayenne); transform: translateY(-1px); }
 
   .table tbody tr { transition: background-color .15s; }
   .stat { transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out); }
-  .stat:hover { transform: translateY(-3px); box-shadow: 0 16px 30px -14px rgba(0, 38, 38, .4); }
+  .stat:hover { transform: translateY(-1px); box-shadow: 0 8px 18px -12px rgba(0, 38, 38, .4); }
 
-  .app-sidebar a, .app-sidebar button { transition: background-color .15s, color .15s, padding-left .18s var(--ease-out); }
-  .app-sidebar a:hover { padding-left: calc(1rem + 3px); }
+  .app-sidebar a, .app-sidebar button { transition: background-color .15s, color .15s; }
 
   .notice { animation: rise .45s var(--ease-out) both; }
   .notice svg { animation: pulse-ring 1.8s ease-out 2; border-radius: 50%; }
@@ -167,7 +166,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { box-shadow: 
 
 @media screen and (max-width: 1560px) {
   .dgrid { grid-template-columns: minmax(15rem, 17.5rem) minmax(0, 1fr); }
-  .dcol-right { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .dcol-right { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
 }
 @media screen and (max-width: 899px) {
   .dgrid { grid-template-columns: 1fr; }
@@ -183,7 +182,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { box-shadow: 
   @keyframes donut-in { from { opacity: 0; transform: rotate(-150deg) scale(.85); } to { opacity: 1; transform: rotate(-90deg) scale(1); } }
   .donut svg { animation: donut-in .8s var(--ease-out) both; }
   .quick-tile { transition: transform .15s var(--ease-out), background-color .15s, color .15s; }
-  .quick-tile:hover { transform: translateY(-3px); }
+  .quick-tile:hover { transform: translateY(-1px); }
   .dcol > * { animation: rise .5s var(--ease-out) both; }
   .dcol > *:nth-child(2) { animation-delay: .07s; }
   .dcol > *:nth-child(3) { animation-delay: .14s; }
@@ -208,3 +207,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { box-shadow: 
 
 /* No orange margin line on cards, slips or sheets */
 .stat-hero::before, .slip::before, .notfound-sheet::before, .sheet::before { display: none; }
+
+.sell-prices { margin-top: 28px; }
+.sell-prices .panel-head { margin-bottom: 12px; }
+
+/* A dashboard panel's heading and its period menu wrap instead of being clipped on a narrow panel. */
+.dpanel .panel-head { flex-wrap: wrap; min-width: 0; }
+.dpanel .panel-head > * { min-width: 0; }

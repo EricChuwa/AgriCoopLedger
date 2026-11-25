@@ -16,11 +16,12 @@ const asResult = async (promise) => {
   try {
     return { data: await promise };
   } catch (err) {
-    return { error: { field: err.field, message: err.message } };
+    // `network` is true when the server could not be reached at all (no status came back).
+    return { error: { field: err.field, message: err.message, status: err.status, network: err.status == null } };
   }
 };
 
-const EMPTY = { coop: null, farmers: [], produce: [], staff: [], corrections: [] };
+const EMPTY = { coop: null, farmers: [], produce: [], staff: [], corrections: [], disputes: [] };
 
 export function LedgerProvider({ children }) {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ export function LedgerProvider({ children }) {
         produce: api("/produce"),
         staff: role === "manager" ? api("/users") : Promise.resolve([]),
         corrections: role === "manager" || role === "clerk" ? api("/corrections") : Promise.resolve([]),
+        disputes: api("/disputes"),
       };
       const entries = await Promise.all(Object.entries(calls).map(async ([k, p]) => [k, await p]));
       setState(Object.fromEntries(entries));
@@ -59,7 +61,7 @@ export function LedgerProvider({ children }) {
     return result;
   }, [load]);
 
-  const { coop, farmers, produce, staff, corrections } = state;
+  const { coop, farmers, produce, staff, corrections, disputes } = state;
 
   const activeFarmers = useMemo(() => farmers.filter((f) => f.is_active), [farmers]);
   const activeProduce = useMemo(() => produce.filter((p) => p.is_active), [produce]);
@@ -78,6 +80,7 @@ export function LedgerProvider({ children }) {
   const actions = useMemo(() => ({
     addFarmer: (body) => change(api("/farmers", { method: "POST", body })),
     updateFarmer: (id, body) => change(api(`/farmers/${id}`, { method: "PATCH", body })),
+    decideFarmer: (id, decision, note) => change(api(`/farmers/${id}/${decision}`, { method: "POST", body: { note: note || "" } })),
     setFarmerActive: (id, active) => change(api(`/farmers/${id}/${active ? "activate" : "deactivate"}`, { method: "POST" })),
 
     addDelivery: (body) => change(api("/deliveries", { method: "POST", body })),
@@ -86,11 +89,25 @@ export function LedgerProvider({ children }) {
     requestCorrection: (body) => change(api("/corrections", { method: "POST", body })),
     decideCorrection: (id, decision, note) => change(api(`/corrections/${id}/${decision}`, { method: "POST", body: { note: note || "" } })),
 
+    acceptOrder: (id, body) => change(api(`/orders/${id}/accept`, { method: "POST", body })),
+    declineOrder: (id, reason) => change(api(`/orders/${id}/decline`, { method: "POST", body: { reason } })),
+    recordSale: (body) => change(api("/sales", { method: "POST", body })),
+    voidSale: (id, reason) => change(api(`/sales/${id}/void`, { method: "POST", body: { reason } })),
+    recordBuyerPayment: (saleId, body) => change(api(`/sales/${saleId}/payments`, { method: "POST", body })),
+    decideBuyerPayment: (id, decision, note) => change(api(`/buyer-payments/${id}/${decision}`, { method: "POST", body: { note: note || "" } })),
+
+    raiseDispute: (body) => change(api("/disputes", { method: "POST", body })),
+    decideDispute: (id, decision, note) => change(api(`/disputes/${id}/${decision}`, { method: "POST", body: { note } })),
+
+    createBatch: (body) => change(api("/batches", { method: "POST", body })),
+    decideBatch: (id, decision, note) => change(api(`/batches/${id}/${decision}`, { method: "POST", body: decision === "reject" ? { reason: note } : undefined })),
+    payInBatch: (id, body) => change(api(`/batches/${id}/payments`, { method: "POST", body })),
     addPayment: (body) => change(api("/payments", { method: "POST", body })),
     voidPayment: (id, reason) => change(api(`/payments/${id}/void`, { method: "POST", body: { reason } })),
 
     addProduce: (body) => change(api("/produce", { method: "POST", body })),
     setPrice: (produceId, body) => change(api(`/produce/${produceId}/prices`, { method: "POST", body })),
+    setSellingPrice: (produceId, body) => change(api(`/produce/${produceId}/selling-prices`, { method: "POST", body })),
     renameProduce: (id, name) => change(api(`/produce/${id}`, { method: "PATCH", body: { name } })),
     setProduceActive: (id, is_active) => change(api(`/produce/${id}`, { method: "PATCH", body: { is_active } })),
 
@@ -106,10 +123,10 @@ export function LedgerProvider({ children }) {
   const value = useMemo(() => ({
     status, loadError, reload: load, version,
     coop: coop ?? { name: user.cooperative_name, district: "", phone: "" },
-    farmers, activeFarmers, produce, activeProduce, staff, corrections,
+    farmers, activeFarmers, produce, activeProduce, staff, corrections, disputes,
     balanceOf, priceOn, ...actions,
   }), [status, loadError, load, version, coop, user.cooperative_name, farmers, activeFarmers, produce, activeProduce,
-    staff, corrections, balanceOf, priceOn, actions]);
+    staff, corrections, disputes, balanceOf, priceOn, actions]);
 
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;
 }

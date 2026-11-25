@@ -32,6 +32,8 @@ export function getDashboardData(d) {
     paidToday: d.paid_today,
     farmersThisWeek: d.farmers_this_week,
     pendingCorrections: d.pending_corrections,
+    farmersWaiting: d.farmers_waiting ?? 0,
+    batchesWaiting: d.batches_waiting ?? 0,
     week: d.week.map((w, i) => ({ label: i === d.week.length - 1 ? "Today" : weekdayOf(w.date), kg: w.kg, isToday: i === d.week.length - 1 })),
     produceWeek: d.produce_week ?? [],
     largestBalances: d.largest_balances,

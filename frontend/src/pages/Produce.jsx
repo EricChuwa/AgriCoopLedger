@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Alert from "../components/Alert.jsx";
 import Dialog from "../components/Dialog.jsx";
 import Field from "../components/Field.jsx";
@@ -21,10 +22,10 @@ function priceError(value, required = true) {
 const num = (v) => Number(String(v).replace(/[,\s]/g, ""));
 
 // The price in force today for each grade.
-function currentPrices(item) {
+function currentPrices(item, list = "prices") {
   const today = todayIso();
   return Object.fromEntries(GRADES.map((g) => {
-    const hits = item.prices.filter((p) => p.grade === g && p.effective_from <= today)
+    const hits = (item[list] || []).filter((p) => p.grade === g && p.effective_from <= today)
       .sort((a, b) => (a.effective_from === b.effective_from ? b.id - a.id : a.effective_from < b.effective_from ? 1 : -1));
     return [g, hits[0] ?? null];
   }));
@@ -86,14 +87,22 @@ function AddProduceDialog({ onSubmit, onClose }) {
   );
 }
 
-function PriceDialog({ item, onSubmit, onClose }) {
-  const now = currentPrices(item);
-  const { values, errors, handleChange, handleBlur, validate, setFieldError } = useForm(
-    { grade: "A", price: now.A ? String(now.A.price_per_kg) : "", from: todayIso() },
+// A suggested selling price: what the cooperative pays for the grade now, plus a 20% margin, rounded up to 10 RWF.
+const MARGIN = 1.2;
+const suggest = (buy) => (buy ? Math.ceil((buy.price_per_kg * MARGIN) / 10) * 10 : null);
+
+function PriceDialog({ item, onSubmit, onClose, selling = false }) {
+  const now = currentPrices(item, selling ? "selling_prices" : "prices");
+  const buying = currentPrices(item);
+  const start = (g) => (now[g] ? String(now[g].price_per_kg) : selling && suggest(buying[g]) ? String(suggest(buying[g])) : "");
+  const { values, errors, handleChange, handleBlur, validate, setFieldError, setValue } = useForm(
+    { grade: "A", price: start("A"), from: todayIso() },
     { grade: () => "", price: (v) => priceError(v), from: (v) => (v ? "" : "Choose the date the price starts.") });
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const current = now[values.grade];
+  const hint = selling ? suggest(buying[values.grade]) : null;
+  const pickGrade = (e) => setValue({ grade: e.target.value, price: start(e.target.value) });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,28 +120,35 @@ function PriceDialog({ item, onSubmit, onClose }) {
   };
 
   return (
-    <Dialog title={`Set a price for ${item.name}`} onClose={onClose}>
+    <Dialog title={`${selling ? "Set a selling price for" : "Set a price for"} ${item.name}`} onClose={onClose}>
       <p className="dialog-lead">
-        {current ? `Grade ${values.grade} is ${fmt(current.price_per_kg)} RWF per kg now.` : `Grade ${values.grade} has no price yet.`}
-        {" "}Deliveries already recorded keep the price they were recorded at.
+        {current ? `Grade ${values.grade} ${selling ? "sells" : "is"} at ${fmt(current.price_per_kg)} RWF per kg now.` : `Grade ${values.grade} has no ${selling ? "selling " : ""}price yet.`}
+        {selling
+          ? " Clerks must sell at this price. Sales already recorded keep theirs."
+          : " Deliveries already recorded keep the price they were recorded at."}
       </p>
+      {selling && <p className="dialog-note">
+        {buying[values.grade]
+          ? `The cooperative pays farmers ${fmt(buying[values.grade].price_per_kg)} RWF per kg for Grade ${values.grade}. Suggested selling price: ${fmt(hint)} RWF (that price plus 20%, rounded up to 10).`
+          : `No buying price is set for Grade ${values.grade}, so there is nothing to suggest from.`}
+      </p>}
       <form onSubmit={handleSubmit} noValidate>
         <Alert>{formError}</Alert>
         <Field id="grade" label="Grade">
           {(p) => (
-            <select {...p} value={values.grade} onChange={handleChange}>
+            <select {...p} value={values.grade} onChange={pickGrade}>
               {GRADES.map((g) => <option key={g} value={g}>Grade {g}</option>)}
             </select>
           )}
         </Field>
-        <Field id="price" label="New price per kg (RWF)" error={errors.price}>
+        <Field id="price" label={selling ? "Selling price per kg (RWF)" : "New price per kg (RWF)"} error={errors.price}>
           {(p) => <input {...p} type="text" inputMode="numeric" autoComplete="off" value={values.price} onChange={handleChange} onBlur={handleBlur} />}
         </Field>
         <Field id="from" label="Starts on" hint="It cannot start before the grade's latest price." error={errors.from}>
           {(p) => <input {...p} type="date" value={values.from} onChange={handleChange} />}
         </Field>
         <div className="dialog-actions">
-          <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Saving" : "Save price"}</button>
+          <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Saving" : selling ? "Save selling price" : "Save price"}</button>
           <button className="btn btn-outline" type="button" onClick={onClose}>Cancel</button>
         </div>
       </form>
@@ -172,10 +188,12 @@ function RenameDialog({ item, onSubmit, onClose }) {
 }
 
 export default function Produce() {
-  const { produce, addProduce, setPrice, setProduceActive, renameProduce } = useLedger();
+  const { produce, addProduce, setPrice, setSellingPrice, setProduceActive, renameProduce } = useLedger();
   const { user } = useAuth();
   const canEdit = user.role === "manager"; // everyone can read prices (FR 3.3); only the Manager sets them
-  const [dialog, setDialog] = useState(null); // { kind: "add" } or { kind: "price", item }
+  const [params, setParams] = useSearchParams();
+  const [dialog, setDialog] = useState(() => (params.get("add") === "1" && user.role === "manager" ? { kind: "add" } : null)); // { kind: "add" } or { kind: "price", item }
+  useEffect(() => { if (params.get("add")) setParams({}, { replace: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [error, setError] = useState("");
 
   useEffect(() => { document.title = "Produce and prices | AgriCoopLedger"; }, []);
@@ -194,7 +212,12 @@ export default function Produce() {
       <header className="page-head">
         <div>
           <h1>{canEdit ? "Produce and prices" : "Prices"}</h1>
-          <p>What the cooperative buys and the price it pays per kilogram, for each grade.{!canEdit && " Only a Manager can change prices."}</p>
+          <p>What the cooperative buys and the buying price it pays per kilogram, for each grade.{!canEdit && " Only a Manager can change prices."}<span className="info-tip">
+            <button type="button" className="info-tip-btn" aria-label="How prices apply" aria-describedby="price-tip">
+              <Icon name="info" size={18} />
+            </button>
+            <span id="price-tip" role="tooltip" className="info-tip-bubble">A price applies to deliveries dated from its start date. Deliveries already recorded keep the price they were recorded at.</span>
+          </span></p>
         </div>
         {canEdit && <div className="quick-actions">
           <button className="btn btn-primary" type="button" onClick={() => setDialog({ kind: "add" })}>
@@ -203,13 +226,9 @@ export default function Produce() {
         </div>}
       </header>
 
-      <p className="notice" role="note">
-        <Icon name="info" size={18} />
-        <span>A price applies to deliveries dated from its start date. Deliveries already recorded keep the price they were recorded at.</span>
-      </p>
       <Alert>{error}</Alert>
 
-      <table className="table table-numbers">
+      <div className="table-scroll"><table className="table table-numbers">
         <thead>
           <tr>
             <th scope="col">Produce</th>
@@ -247,13 +266,49 @@ export default function Produce() {
             );
           })}
         </tbody>
-      </table>
+      </table></div>
       {produce.length === 0 && <div className="empty-block"><p>{canEdit ? "No produce yet. Add what the cooperative buys, with its prices." : "No prices have been set yet."}</p></div>}
+
+      <section aria-labelledby="sell-title" className="sell-prices">
+        <div className="panel-head">
+          <h2 id="sell-title">Selling prices</h2>
+          <p>What the cooperative sells at, per kilogram.{canEdit ? " Clerks must use these prices when they sell." : " Set by the Manager."}</p>
+        </div>
+        <div className="table-scroll"><table className="table table-numbers">
+          <thead>
+            <tr>
+              <th scope="col">Produce</th>
+              {GRADES.map((g) => <th key={g} scope="col" className="num">Grade {g} per kg</th>)}
+              {canEdit && <th scope="col"><span className="visually-hidden">Actions</span></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {produce.filter((p) => p.is_active).map((p) => {
+              const now = currentPrices(p, "selling_prices");
+              return (
+                <tr key={p.id}>
+                  <th scope="row" className="cell-main"><span className="cell-name">{p.name}</span></th>
+                  {GRADES.map((g) => (
+                    <td key={g} data-label={`Grade ${g} per kg`} className="num num-strong">
+                      {now[g] ? `${fmt(now[g].price_per_kg)} RWF` : <span className="muted">Not set</span>}
+                    </td>
+                  ))}
+                  {canEdit && <td className="cell-actions">
+                    <button type="button" className="row-action row-button" onClick={() => setDialog({ kind: "sell", item: p })}>
+                      Set selling price<span className="visually-hidden"> of {p.name}</span>
+                    </button>
+                  </td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table></div>
+      </section>
 
       <section className="dpanel history" aria-labelledby="history-title">
         <div className="panel-head">
-          <h2 id="history-title">Price history</h2>
-          <p>Every price the cooperative has set, newest first</p>
+          <h2 id="history-title">Buying price history</h2>
+          <p>Every buying price the cooperative has set, newest first</p>
         </div>
         {history.length === 0 ? <p className="empty">No prices yet.</p> : (
           <ul className="activity">
@@ -273,6 +328,9 @@ export default function Produce() {
       {dialog?.kind === "add" && <AddProduceDialog onSubmit={addProduce} onClose={() => setDialog(null)} />}
       {dialog?.kind === "rename" && (
         <RenameDialog item={dialog.item} onSubmit={(name) => renameProduce(dialog.item.id, name)} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === "sell" && (
+        <PriceDialog selling item={dialog.item} onSubmit={(body) => setSellingPrice(dialog.item.id, body)} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === "price" && (
         <PriceDialog item={dialog.item} onSubmit={(body) => setPrice(dialog.item.id, body)} onClose={() => setDialog(null)} />

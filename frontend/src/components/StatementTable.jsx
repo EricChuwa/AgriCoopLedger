@@ -8,7 +8,7 @@ export default function StatementTable({ statement }) {
 
   return (
     <>
-      <table className="table table-numbers statement">
+      <div className="table-scroll"><table className="table table-numbers statement">
         <thead>
           <tr>
             <th scope="col">Date</th>
@@ -43,7 +43,7 @@ export default function StatementTable({ statement }) {
             <td className="num num-strong">{fmt(balance)} RWF</td>
           </tr>
         </tfoot>
-      </table>
+      </table></div>
       {voidedCount > 0 && (
         <p className="results">{voidedCount} voided {voidedCount === 1 ? "entry is" : "entries are"} left out of this statement.</p>
       )}

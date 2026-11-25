@@ -4,6 +4,8 @@
 import re
 from datetime import date, datetime, timezone
 
+from typing import Callable
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, or_, select
@@ -15,6 +17,7 @@ from app.deps import get_current_user, require_role
 from app.helpers import conflict, get_in_coop, invalid, like
 from app.models import ROLE_MANAGER, ROLE_PAYMENT_OFFICER, Farmer, Payment, User
 from app.schemas import PaymentIn, PaymentOut, PaymentPage, Reason, VoidInfo
+from app.statuses import annotate_payments
 from app.services import balance_of, fmt_rwf, today
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -26,9 +29,13 @@ def receipt_no(payment_id: int) -> str:
     return f"P-{payment_id:06d}"
 
 
+def batch_no(batch_id: int) -> str:
+    return f"B-{batch_id:06d}"
+
+
 def payment_out(p: Payment) -> PaymentOut:
     return PaymentOut(
-        id=p.id, receipt_no=receipt_no(p.id), farmer_id=p.farmer_id, farmer_name=p.farmer.full_name,
+        id=p.id, batch_id=p.batch_id, batch_no=batch_no(p.batch_id) if p.batch_id else None, receipt_no=receipt_no(p.id), farmer_id=p.farmer_id, farmer_name=p.farmer.full_name,
         amount=p.amount, method=p.method, reference=p.reference, payment_date=p.payment_date,
         recorded_by=p.recorded_by.full_name, created_at=p.created_at,
         voided=VoidInfo(by=p.voided_by.full_name, reason=p.void_reason or "", at=p.voided_at) if p.voided_at else None,
@@ -74,7 +81,7 @@ def list_payments(
         .options(selectinload(Payment.farmer), selectinload(Payment.recorded_by), selectinload(Payment.voided_by))
         .order_by(Payment.payment_date.desc(), Payment.id.desc())
         .offset((page - 1) * page_size).limit(page_size)).all()
-    return PaymentPage(items=[payment_out(p) for p in rows], total=total, page=page, page_size=page_size,
+    return PaymentPage(items=annotate_payments(db, user.cooperative_id, [payment_out(p) for p in rows]), total=total, page=page, page_size=page_size,
                        live_count=live_count, live_amount=int(live_amount))
 
 
@@ -82,6 +89,16 @@ def list_payments(
 def record_payment(
     data: PaymentIn, user: User = Depends(require_role(ROLE_PAYMENT_OFFICER)), db: Session = Depends(get_db)
 ):
+    return record_payment_core(db, user, data)
+
+
+def record_payment_core(
+    db: Session, user: User, data: PaymentIn, batch_id: int | None = None,
+    extra_check: Callable[[Farmer], None] | None = None,
+) -> PaymentOut:
+    """Record one payment with every check of FR 5. A payment made against a batch passes its id and an
+    `extra_check` that refuses what the batch does not allow (an unapproved batch, a farmer not in it, more than
+    planned). It runs after the lock and the repeat check, so it sees the same state the balance check does."""
     # Lock first, then look at anything. Two payments for the same farmer would otherwise both read the same
     # balance and both pass the overpayment check (BR 4). A repeat submission that waited here finds the
     # first one already saved and gets it back.
@@ -97,6 +114,8 @@ def record_payment(
     when = data.payment_date or today()
     if when > today():
         raise invalid("The date cannot be in the future.", "payment_date")
+    if extra_check:
+        extra_check(farmer)
 
     balance = balance_of(db, farmer.id)
     if balance <= 0:
@@ -114,13 +133,13 @@ def record_payment(
     payment = Payment(
         cooperative_id=user.cooperative_id, farmer_id=farmer.id, amount=data.amount, method=data.method,
         reference=data.reference, payment_date=when, recorded_by_id=user.id,
-        client_id=data.client_id,
+        client_id=data.client_id, batch_id=batch_id,
     )
     db.add(payment)
     db.flush()
     audit.record(db, user, "payment.recorded", "payment", payment.id,
                  f"Recorded {receipt_no(payment.id)}: paid {fmt_rwf(payment.amount)} to {farmer.full_name} "
-                 f"({METHOD_LABEL[payment.method]}).")
+                 f"({METHOD_LABEL[payment.method]})." + (f" Batch {batch_no(batch_id)}." if batch_id else ""))
     try:
         db.commit()
     except IntegrityError:  # two identical submissions raced: the other one won, return it
@@ -136,7 +155,7 @@ def record_payment(
 
 @router.get("/{payment_id}", response_model=PaymentOut)
 def get_payment(payment_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return payment_out(get_in_coop(db, Payment, payment_id, user, "Payment"))
+    return annotate_payments(db, user.cooperative_id, [payment_out(get_in_coop(db, Payment, payment_id, user, "Payment"))])[0]
 
 
 @router.post("/{payment_id}/void", response_model=PaymentOut)

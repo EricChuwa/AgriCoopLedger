@@ -61,6 +61,8 @@ const SHAPES = {
     </>
   ),
   menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+  "collapse": <path d="M11 7l-5 5 5 5M18 7l-5 5 5 5" />,
+  "expand": <path d="M13 7l5 5-5 5M6 7l5 5-5 5" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   plus: <path d="M12 5v14M5 12h14" />,
   settings: (

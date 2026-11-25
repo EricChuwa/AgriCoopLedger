@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePaymentDialog } from "../context/PaymentDialogContext.jsx";
 import Icon from "../components/Icon.jsx";
 import ReasonDialog from "../components/ReverseDialog.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -12,8 +13,11 @@ import { METHOD_LABEL, fmt, plural, shortDate, whenLabel } from "../lib/format.j
 export default function Payments() {
   const { user } = useAuth();
   const role = user.role;
-  const { version, voidPayment } = useLedger();
+  const { version, voidPayment, raiseDispute } = useLedger();
+  const { openPayment } = usePaymentDialog();
   const [voiding, setVoiding] = useState(null);
+  const [disputing, setDisputing] = useState(null);
+  const [sent, setSent] = useState("");
   const [query, setQuery] = useState("");
   const [method, setMethod] = useState("all");
   const [from, setFrom] = useState("");
@@ -46,7 +50,7 @@ export default function Payments() {
         </div>
         {role === "payment_officer" && (
           <div className="quick-actions">
-            <Link className="btn btn-primary" to="/payments/new"><Icon name="plus" size={18} />Record payment</Link>
+            <button className="btn btn-primary" type="button" onClick={() => openPayment()}><Icon name="plus" size={18} />Record payment</button>
           </div>
         )}
       </header>
@@ -68,6 +72,7 @@ export default function Payments() {
         <div className="filter"><label htmlFor="to">To</label><input id="to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></div>
       </div>
 
+      {sent && <p className="notice" role="status"><Icon name="check" size={18} /><span>{sent}</span></p>}
       <Alert>{error}</Alert>
       <p className="results" aria-live="polite">
         {loading && !data ? "Loading" : <>
@@ -81,10 +86,10 @@ export default function Payments() {
           <p>{filtered ? "No payments match your filters." : "No payments yet."}</p>
           {filtered
             ? <button className="btn btn-outline" type="button" onClick={clear}>Clear filters</button>
-            : role === "payment_officer" && <Link className="btn btn-primary" to="/payments/new">Record the first payment</Link>}
+            : role === "payment_officer" && <button className="btn btn-primary" type="button" onClick={() => openPayment()}>Record the first payment</button>}
         </div>
       ) : (
-        <table className="table table-numbers">
+        <div className="table-scroll"><table className="table table-numbers">
           <thead>
             <tr>
               <th scope="col">Date</th>
@@ -105,6 +110,7 @@ export default function Payments() {
                   <div className="cell-stack">
                     <span className="cell-name">{p.farmer_name}</span>
                     <span className="cell-sub">Recorded by {p.recorded_by}</span>
+                    {p.disputed && !p.voided && <span className="cell-sub"><span className="pill pill-owed">Disputed</span></span>}
                     {p.voided && (
                       <span className="cell-sub reversed-note">
                         <span className="pill pill-muted">Voided</span> by {p.voided.by}: {p.voided.reason}
@@ -116,6 +122,11 @@ export default function Payments() {
                 <td data-label="Amount" className="num num-strong">{fmt(p.amount)} RWF</td>
                 <td className="cell-actions">
                   <Link className="row-action" to={`/receipts/payment/${p.id}`}>Receipt<span className="visually-hidden"> {p.receipt_no}</span></Link>
+                  {!p.voided && (role === "manager" || role === "payment_officer") && !p.disputed && (
+                    <button type="button" className="row-action row-button" onClick={() => setDisputing(p)}>
+                      Dispute<span className="visually-hidden"> {p.receipt_no}</span>
+                    </button>
+                  )}
                   {!p.voided && role === "manager" && (
                     <button type="button" className="row-action row-button" onClick={() => setVoiding(p)}>
                       Void<span className="visually-hidden"> {p.receipt_no}</span>
@@ -125,10 +136,20 @@ export default function Payments() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
       <Pager page={page} pageSize={25} total={total} onPage={setPage} />
 
+      {disputing && (
+        <ReasonDialog
+          title="Dispute this payment?"
+          summary={`${disputing.receipt_no}: ${fmt(disputing.amount)} RWF to ${disputing.farmer_name}.`}
+          note="Use this when someone challenges the record. Nothing changes yet. A Manager reads your reason and upholds or dismisses it."
+          submitLabel="Raise dispute"
+          danger={false}
+          onConfirm={(reason) => raiseDispute({ payment_id: disputing.id, reason })}
+          onClose={(done) => { if (done) setSent(`Dispute raised on ${disputing.receipt_no}. A Manager will decide it.`); setDisputing(null); }} />
+      )}
       {voiding && (
         <ReasonDialog
           title="Void this payment?"

@@ -81,7 +81,7 @@ body {
   color: var(--linen);
   text-decoration: none;
 }
-.wordmark span { color: var(--lime); }
+.wordmark-text > span { color: var(--lime); }
 
 .brand h2 {
   margin: 0;
@@ -319,8 +319,8 @@ input:focus-visible, select:focus-visible {
   box-shadow: 4px 4px 0 var(--edge);
   transition: transform 0.12s, box-shadow 0.12s;
 }
-.submit:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--edge); }
-.submit:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--edge); }
+.submit:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--edge); }
+.submit:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--edge); }
 
 .alt { margin: 1.5rem 0 0; font-size: 0.9375rem; color: var(--teal); }
 .alt a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
@@ -403,3 +403,15 @@ a.submit { display: block; text-align: center; text-decoration: none; line-heigh
 
 /* Compact button for the placeholder pages */
 .stub-button { width: auto; min-width: 9rem; padding: 0 1.5rem; }
+
+/* Logo mark beside the name, on a linen tile so the dark book reads on every background */
+.wordmark { display: inline-flex; align-items: center; gap: 0.5em; }
+.wordmark-mark { width: 1.7em; height: 1.7em; padding: 0.18em; object-fit: contain; background: var(--linen); border-radius: 0.4em; flex: none; }
+
+/* Anything you can click shows a pointer. Disabled controls show the not-allowed cursor. */
+a[href], button, summary, select, label[for], [role="button"], [role="tab"], [role="menuitem"],
+input[type="checkbox"], input[type="radio"], input[type="submit"], input[type="button"], input[type="file"], input[type="date"]::-webkit-calendar-picker-indicator,
+.choice, .choice input, .seg button, .quick-tile, .app-link, .app-tab, .row-action, .cell-link, .panel-link, .theme-toggle, .info-tip-btn { cursor: pointer; }
+.table tbody tr[aria-expanded] { cursor: pointer; }
+button:disabled, [aria-disabled="true"], input:disabled, select:disabled { cursor: not-allowed; }
+.info-tip-btn { cursor: help; }

@@ -9,7 +9,7 @@ from app import audit
 from app.database import get_db
 from app.deps import get_current_user, require_role
 from app.helpers import conflict, get_in_coop, invalid
-from app.models import ROLE_MANAGER, Price, ProduceType, User
+from app.models import ROLE_MANAGER, Price, ProduceType, SellingPrice, User
 from app.schemas import PriceIn, PriceOut, ProduceIn, ProduceOut, ProduceUpdateIn
 from app.services import fmt_rwf, today
 
@@ -18,13 +18,15 @@ router = APIRouter(prefix="/api/produce", tags=["produce"])
 manager_only = require_role(ROLE_MANAGER)
 
 
+def _price_outs(rows) -> list[PriceOut]:
+    rows = sorted(rows, key=lambda x: (x.effective_from, x.id), reverse=True)
+    return [PriceOut(id=x.id, grade=x.grade, price_per_kg=x.price_per_kg,
+                     effective_from=x.effective_from, set_by=x.created_by.full_name) for x in rows]
+
+
 def _out(p: ProduceType) -> ProduceOut:
-    prices = sorted(p.prices, key=lambda x: (x.effective_from, x.id), reverse=True)
-    return ProduceOut(
-        id=p.id, name=p.name, is_active=p.is_active,
-        prices=[PriceOut(id=x.id, grade=x.grade, price_per_kg=x.price_per_kg,
-                         effective_from=x.effective_from, set_by=x.created_by.full_name) for x in prices],
-    )
+    return ProduceOut(id=p.id, name=p.name, is_active=p.is_active,
+                      prices=_price_outs(p.prices), selling_prices=_price_outs(p.selling_prices))
 
 
 def _load(db: Session, produce_id: int, user: User) -> ProduceType:
@@ -61,7 +63,9 @@ def _add_price(db: Session, user: User, produce: ProduceType, data: PriceIn) -> 
 def list_produce(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.scalars(
         select(ProduceType).where(ProduceType.cooperative_id == user.cooperative_id)
-        .options(selectinload(ProduceType.prices).selectinload(Price.created_by)).order_by(ProduceType.name)
+        .options(selectinload(ProduceType.prices).selectinload(Price.created_by),
+                 selectinload(ProduceType.selling_prices).selectinload(SellingPrice.created_by))
+        .order_by(ProduceType.name)
     ).all()
     return [_out(p) for p in rows]
 
@@ -111,3 +115,36 @@ def set_price(produce_id: int, data: PriceIn, user: User = Depends(manager_only)
     db.commit()
     db.refresh(produce)
     return _out(produce)
+
+
+@router.post("/{produce_id}/selling-prices", response_model=ProduceOut, status_code=201)
+def set_selling_price(produce_id: int, data: PriceIn, user: User = Depends(manager_only), db: Session = Depends(get_db)):
+    """The Manager dictates what the cooperative sells at. Clerks use it; they cannot change it."""
+    produce = _load(db, produce_id, user)
+    start = data.effective_from or today()
+    latest = db.scalar(select(func.max(SellingPrice.effective_from)).where(
+        SellingPrice.produce_id == produce.id, SellingPrice.grade == data.grade))
+    if latest is not None and start < latest:
+        raise invalid(f"A Grade {data.grade} selling price already starts on {latest.isoformat()}. "
+                      "Choose that date or a later one.", "effective_from")
+    current = current_selling_price(db, produce.id, data.grade, start)
+    if current is not None and current == data.price_per_kg:
+        raise conflict("That is already the selling price from that date.", "price")
+    row = SellingPrice(produce_id=produce.id, grade=data.grade, price_per_kg=data.price_per_kg,
+                       effective_from=start, created_by_id=user.id)
+    db.add(row)
+    db.flush()
+    audit.record(db, user, "selling_price.set", "selling_price", row.id,
+                 f"Set {produce.name} Grade {data.grade} selling price to {fmt_rwf(data.price_per_kg)} per kg from {start.isoformat()}.")
+    db.commit()
+    db.refresh(produce)
+    return _out(produce)
+
+
+def current_selling_price(db: Session, produce_id: int, grade: str, on) -> int | None:
+    row = db.scalars(
+        select(SellingPrice).where(SellingPrice.produce_id == produce_id, SellingPrice.grade == grade,
+                                   SellingPrice.effective_from <= on)
+        .order_by(SellingPrice.effective_from.desc(), SellingPrice.id.desc()).limit(1)
+    ).first()
+    return row.price_per_kg if row else None

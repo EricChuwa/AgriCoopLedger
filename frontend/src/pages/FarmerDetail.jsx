@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import DecisionButtons from "../components/DecisionButtons.jsx";
 import Icon from "../components/Icon.jsx";
 import StatementTable from "../components/StatementTable.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLedger } from "../context/LedgerContext.jsx";
+import { useDeliveryDialog } from "../context/DeliveryDialogContext.jsx";
+import { usePaymentDialog } from "../context/PaymentDialogContext.jsx";
 import { fmt, formatPhone, kgText, shortDate } from "../lib/format.js";
 import { fromApi } from "../lib/statement.js";
 import useApiData from "../lib/useApiData.js";
@@ -12,7 +15,9 @@ import Alert from "../components/Alert.jsx";
 export default function FarmerDetail() {
   const { id } = useParams();
   const { user } = useAuth();
-  const { farmers, version } = useLedger();
+  const { farmers, version, decideFarmer } = useLedger();
+  const { openDelivery } = useDeliveryDialog();
+  const { openPayment } = usePaymentDialog();
   const farmer = farmers.find((f) => String(f.id) === id);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -42,16 +47,22 @@ export default function FarmerDetail() {
       <p className="crumb"><Link to="/farmers">Farmers</Link></p>
       <header className="page-head">
         <div>
-          <h1>{farmer.full_name}{!farmer.is_active && <span className="pill pill-muted title-pill">Inactive</span>}</h1>
+          <h1>{farmer.full_name}{!farmer.is_active && <span className="pill pill-muted title-pill">{farmer.enrolment === "pending" ? "Waiting for a Manager" : farmer.enrolment === "rejected" ? "Declined" : "Inactive"}</span>}</h1>
           <p>{details || "No phone or village recorded."}</p>
           <p className="muted">National ID {farmer.national_id} &middot; member since {shortDate(farmer.member_since)}</p>
         </div>
         <div className="quick-actions no-print">
+          {farmer.enrolment === "pending" && role === "manager" && (
+            <DecisionButtons small={false} subject={farmer.full_name}
+              approveText="They become an active farmer and deliveries can be recorded."
+              declineText="They stay on record as declined and cannot deliver."
+              onDecide={(d, note) => decideFarmer(farmer.id, d, note)} />
+          )}
           {farmer.is_active && role === "clerk" && (
-            <Link className="btn btn-primary" to={`/deliveries/new?farmer=${farmer.id}`}><Icon name="plus" size={18} />Record delivery</Link>
+            <button className="btn btn-primary" type="button" onClick={() => openDelivery(farmer.id)}><Icon name="plus" size={18} />Record delivery</button>
           )}
           {farmer.is_active && role === "payment_officer" && farmer.balance > 0 && (
-            <Link className="btn btn-primary" to={`/payments/new?farmer=${farmer.id}`}><Icon name="plus" size={18} />Record payment</Link>
+            <button className="btn btn-primary" type="button" onClick={() => openPayment(farmer.id)}><Icon name="plus" size={18} />Record payment</button>
           )}
           <button className="btn btn-outline" type="button" onClick={() => window.print()}>Print statement</button>
           {role !== "payment_officer" && <Link className="btn btn-outline" to={`/farmers/${farmer.id}/edit`}>Edit</Link>}

@@ -58,7 +58,7 @@ export default function EditFarmer() {
       <div className="record record-single">
         <FarmerForm initial={initial} submitLabel="Save changes" onSubmit={handleSubmit} />
 
-        {isManager && (
+        {isManager && farmer.enrolment === "approved" && (
           <section className="danger-zone" aria-labelledby="status-title">
             <h2 id="status-title">{farmer.is_active ? "Deactivate farmer" : "Reactivate farmer"}</h2>
             {farmer.is_active ? (

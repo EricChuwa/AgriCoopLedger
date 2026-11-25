@@ -96,7 +96,7 @@ export default function AuditLog() {
       {!loading && rows.length === 0 ? (
         <div className="empty-block"><p>No entries match.</p></div>
       ) : (
-        <table className="table">
+        <div className="table-scroll"><table className="table">
           <thead>
             <tr>
               <th scope="col">When</th>
@@ -113,7 +113,7 @@ export default function AuditLog() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

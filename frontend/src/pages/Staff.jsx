@@ -152,7 +152,7 @@ export default function Staff() {
         </section>
       )}
 
-      <table className="table">
+      <div className="table-scroll"><table className="table">
         <thead>
           <tr>
             <th scope="col">Name</th>
@@ -206,7 +206,7 @@ export default function Staff() {
             );
           })}
         </tbody>
-      </table>
+      </table></div>
 
       {editing && (
         <EditStaffDialog member={editing} onSubmit={(body) => updateStaff(editing.id, body)} onClose={() => setEditing(null)} />

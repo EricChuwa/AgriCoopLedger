@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import LedgerDemo from "../components/LedgerDemo.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import FeatureTiles from "../components/FeatureTiles.jsx";
 import Icon from "../components/Icon.jsx";
+import Wordmark from "../components/Wordmark.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import useTheme from "../lib/theme.js";
 import "../styles/dark.css";
@@ -13,17 +14,17 @@ import receipt from "../assets/images/receipt-handover.webp";
 import "../styles/landing.css";
 
 const ON_PAPER = [
-  "Added by hand at the end of the week",
-  "A farmer disputes a delivery, and the page is the only proof",
-  "Payments live in a different book from deliveries",
-  "One farmer's history means turning every page",
+  "Weekly total, added up by hand on Friday",
+  "A farmer says the weight was higher and all you have is a pencil mark",
+  "Payments get written in a separate book",
+  "Finding one farmer's history means flipping through months of pages",
 ];
 
 const IN_APP = [
-  "Each amount is worked out the moment a delivery is recorded",
-  "Every entry keeps who recorded it, and when",
-  "Deliveries and payments sit together in one balance",
-  "Open a farmer to see their whole history",
+  "The value is worked out as soon as the delivery is recorded",
+  "Each entry shows who made it and when",
+  "What a farmer is owed and what they've been paid sit in one balance",
+  "Tap a farmer to see everything they've delivered and been paid",
 ];
 
 const STEPS = [
@@ -82,7 +83,7 @@ const OFFICER = [
   "National ID numbers are hidden",
 ];
 
-function Actions({ onDark = false, showSignIn = true }) {
+function Actions({ onDark = false, showBuy = true }) {
   const { user } = useAuth();
   const mod = onDark ? " lp-btn--dark" : "";
 
@@ -91,8 +92,8 @@ function Actions({ onDark = false, showSignIn = true }) {
   }
   return (
     <>
-      <Link className={`lp-btn${mod}`} to="/signup">Register your cooperative</Link>
-      {showSignIn && <Link className="lp-link" to="/login">Sign in</Link>}
+      <Link className={`lp-btn${mod}`} to="/signup">Join or register your cooperative</Link>
+      {showBuy && <Link className="lp-link" to="/buy">Buy</Link>}
     </>
   );
 }
@@ -101,6 +102,13 @@ export default function Landing() {
   const { user } = useAuth();
   const { theme, toggle } = useTheme();
   const dark = theme === "dark";
+  // Arriving from another page with #how-it-works or #roles: scroll once the sections exist.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return undefined;
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView(), 150);
+    return () => clearTimeout(t);
+  }, [hash]);
   const { data: stats, error: statsError } = useApiData("/public/stats");
   const facts = factsFrom(stats);
 
@@ -115,7 +123,7 @@ export default function Landing() {
       <div className="lp-nav-bar">
         <div className="lp-wrap">
           <header className="lp-nav">
-            <Link className="wordmark" to="/">Agri<span>Coop</span>Ledger</Link>
+            <Wordmark />
 
             <nav className="lp-nav-links" aria-label="Sections">
               {NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}
@@ -221,13 +229,13 @@ export default function Landing() {
             <div className="lp-intro">
               <div>
                 <p className="lp-tag">Why not paper</p>
-                <h2 id="problem-title">On paper, a balance is a guess.</h2>
+                <h2 id="problem-title">Where the paper book lets you down</h2>
               </div>
             </div>
 
             <div className="lp-compare">
               <div className="lp-paper">
-                <h3>On paper</h3>
+                <h3>The paper book</h3>
                 <ul>
                   <li>
                     <span>
@@ -317,7 +325,7 @@ export default function Landing() {
             A new cooperative name makes you its Manager. If your cooperative is already registered, its Manager approves your request first.
           </p>
           <div className="lp-cta">
-            <Actions onDark showSignIn={false} />
+            <Actions onDark showBuy={false} />
           </div>
         </div>
       </section>

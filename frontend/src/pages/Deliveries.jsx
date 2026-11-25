@@ -5,16 +5,25 @@ import Icon from "../components/Icon.jsx";
 import ReasonDialog from "../components/ReverseDialog.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLedger } from "../context/LedgerContext.jsx";
+import { useDeliveryDialog } from "../context/DeliveryDialogContext.jsx";
 import Alert from "../components/Alert.jsx";
 import Pager from "../components/Pager.jsx";
 import useApiData, { useDebounced } from "../lib/useApiData.js";
 import { fmt, kgText, plural, shortDate, whenLabel } from "../lib/format.js";
 
+const PAY_PILL = {
+  paid: { cls: "pill-paid", label: "Paid" },
+  part_paid: { cls: "pill-owed", label: "Part paid" },
+  in_batch: { cls: "pill-muted", label: "In batch" },
+  unpaid: { cls: "pill-owed", label: "Unpaid" },
+};
+
 export default function Deliveries() {
   const { user } = useAuth();
+  const { openDelivery } = useDeliveryDialog();
   const role = user.role;
-  const { produce, version, voidDelivery, correctDelivery, requestCorrection } = useLedger();
-  const [dialog, setDialog] = useState(null); // { kind: "void" | "correct" | "request", delivery }
+  const { produce, version, voidDelivery, correctDelivery, requestCorrection, raiseDispute } = useLedger();
+  const [dialog, setDialog] = useState(null); // { kind: "void" | "correct" | "request" | "dispute", delivery }
   const [query, setQuery] = useState("");
   const [produceId, setProduceId] = useState("all");
   const [grade, setGrade] = useState("all");
@@ -42,6 +51,7 @@ export default function Deliveries() {
 
   const close = (data) => {
     if (data && dialog?.kind === "request") setSent(`Your request for ${dialog.delivery.receipt_no} was sent to a Manager.`);
+    if (data && dialog?.kind === "dispute") setSent(`Dispute raised on ${dialog.delivery.receipt_no}. A Manager will decide it.`);
     setDialog(null);
   };
 
@@ -58,7 +68,7 @@ export default function Deliveries() {
         </div>
         {role === "clerk" && (
           <div className="quick-actions">
-            <Link className="btn btn-primary" to="/deliveries/new"><Icon name="plus" size={18} />Record delivery</Link>
+            <button className="btn btn-primary" type="button" onClick={() => openDelivery()}><Icon name="plus" size={18} />Record delivery</button>
           </div>
         )}
       </header>
@@ -102,10 +112,10 @@ export default function Deliveries() {
           <p>{filtered ? "No deliveries match your filters." : "No deliveries yet."}</p>
           {filtered
             ? <button className="btn btn-outline" type="button" onClick={clear}>Clear filters</button>
-            : role === "clerk" && <Link className="btn btn-primary" to="/deliveries/new">Record the first delivery</Link>}
+            : role === "clerk" && <button className="btn btn-primary" type="button" onClick={() => openDelivery()}>Record the first delivery</button>}
         </div>
       ) : (
-        <table className="table table-numbers">
+        <div className="table-scroll"><table className="table table-numbers">
           <thead>
             <tr>
               <th scope="col">Date</th>
@@ -114,6 +124,7 @@ export default function Deliveries() {
               <th scope="col" className="num">Weight</th>
               <th scope="col" className="num">Price per kg</th>
               <th scope="col" className="num">Value</th>
+              <th scope="col">Status</th>
               <th scope="col"><span className="visually-hidden">Actions</span></th>
             </tr>
           </thead>
@@ -128,19 +139,21 @@ export default function Deliveries() {
                   <div className="cell-stack">
                     <span className="cell-name">{d.farmer_name}</span>
                     <span className="cell-sub">Recorded by {d.recorded_by}</span>
-                    {d.corrected && !d.voided && <span className="cell-sub"><span className="pill pill-muted">Corrected</span> see Corrections</span>}
-                    {d.pending_correction && <span className="cell-sub"><span className="pill pill-muted">Correction requested</span></span>}
-                    {d.voided && (
-                      <span className="cell-sub reversed-note">
-                        <span className="pill pill-muted">Voided</span> by {d.voided.by}: {d.voided.reason}
-                      </span>
-                    )}
+                    {d.voided && <span className="cell-sub reversed-note">Voided by {d.voided.by}: {d.voided.reason}</span>}
                   </div>
                 </td>
                 <td data-label="Produce">{d.produce_name}, grade {d.grade}</td>
                 <td data-label="Weight" className="num">{kgText(d.weight_kg)}</td>
                 <td data-label="Price per kg" className="num">{fmt(d.price_per_kg)} RWF</td>
                 <td data-label="Value" className="num num-strong">{fmt(d.value)} RWF</td>
+                <td data-label="Status">
+                  <div className="cell-stack">
+                    {d.voided ? <span className="pill pill-muted">Voided</span> : <span className={`pill ${PAY_PILL[d.payment_status]?.cls}`}>{PAY_PILL[d.payment_status]?.label}</span>}
+                    {d.status === "disputed" && <span className="cell-sub"><span className="pill pill-owed">Disputed</span></span>}
+                    {d.status === "correction_pending" && <span className="cell-sub"><span className="pill pill-muted">Correction requested</span></span>}
+                    {d.corrected && !d.voided && <span className="cell-sub">Corrected, see Corrections</span>}
+                  </div>
+                </td>
                 <td className="cell-actions">
                   <Link className="row-action" to={`/receipts/delivery/${d.id}`}>Receipt<span className="visually-hidden"> {d.receipt_no}</span></Link>
                   {!d.voided && role === "manager" && (
@@ -153,6 +166,11 @@ export default function Deliveries() {
                       </button>
                     </>
                   )}
+                  {!d.voided && (role === "manager" || role === "clerk") && d.status !== "disputed" && (
+                    <button type="button" className="row-action row-button" onClick={() => setDialog({ kind: "dispute", delivery: d })}>
+                      Dispute<span className="visually-hidden"> {d.receipt_no}</span>
+                    </button>
+                  )}
                   {!d.voided && role === "clerk" && !d.pending_correction && (
                     <button type="button" className="row-action row-button" onClick={() => setDialog({ kind: "request", delivery: d })}>
                       Request correction<span className="visually-hidden"> for {d.receipt_no}</span>
@@ -162,7 +180,7 @@ export default function Deliveries() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
       <Pager page={page} pageSize={25} total={total} onPage={setPage} />
 
@@ -173,6 +191,16 @@ export default function Deliveries() {
           note="The entry stays on record, marked as voided, and stops counting towards balances. This cannot be undone."
           submitLabel="Void delivery"
           onConfirm={(reason) => voidDelivery(dialog.delivery.id, reason)}
+          onClose={close} />
+      )}
+      {dialog?.kind === "dispute" && (
+        <ReasonDialog
+          title="Dispute this delivery?"
+          summary={`${dialog.delivery.receipt_no}: ${dialog.delivery.farmer_name}, ${kgText(dialog.delivery.weight_kg)} ${dialog.delivery.produce_name.toLowerCase()}, grade ${dialog.delivery.grade}, worth ${fmt(dialog.delivery.value)} RWF.`}
+          note="Use this when someone challenges the record. Nothing changes yet. A Manager reads your reason and upholds or dismisses it."
+          submitLabel="Raise dispute"
+          danger={false}
+          onConfirm={(reason) => raiseDispute({ delivery_id: dialog.delivery.id, reason })}
           onClose={close} />
       )}
       {dialog?.kind === "correct" && (

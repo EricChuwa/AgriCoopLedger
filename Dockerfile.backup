@@ -1,0 +1,7 @@
+# Image for the daily backup cron job: the PostgreSQL 16 client (pg_dump) plus boto3 for Backblaze B2.
+# The client major version must match the database's (render.yaml pins the database to 16).
+FROM postgres:16-alpine
+RUN apk add --no-cache python3 py3-boto3
+COPY backend/backup_to_b2.py /app/backup_to_b2.py
+ENTRYPOINT []
+CMD ["python3", "/app/backup_to_b2.py"]

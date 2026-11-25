@@ -1,0 +1,7 @@
+/* The period menu sits to the right of the tile's name, small. When the tile is too narrow for the
+   name, the menu and the icon together, the icon is dropped so the menu stays on the same line. */
+.period-stat { container-type: inline-size; }
+.stat-heading { display: flex; flex-wrap: nowrap; align-items: center; gap: .5rem; min-width: 0; }
+.stat-heading .stat-label { margin: 0; white-space: nowrap; }
+.stat-period { margin: 0; padding: .1rem 1.35rem .1rem .55rem; font-size: .72rem; background-position: right .5rem center; background-size: .6rem; }
+@container (max-width: 17.5rem) { .period-stat .stat-top .chip-icon { display: none; } }

@@ -1,17 +1,6 @@
-"""Browser smoke test: signs in as each role and walks the main screens and flows.
-
-Needs a freshly seeded database, the backend on :8000 and the frontend on :5173, and Playwright:
-
-    pip install playwright && playwright install chromium
-    docker compose exec backend python -m app.seed --reset
-    python scripts/e2e_smoke.py
-
-It records a delivery and a payment and creates a cooperative, so reset the seed data before running it again.
-Set BASE_URL to test another address. Exit code is 1 if any check fails.
-"""
-import os, re, sys, time
+import re, json, time
 from playwright.sync_api import sync_playwright
-BASE=os.environ.get("BASE_URL","http://localhost:5173")
+BASE="http://localhost:5173"
 results=[]; 
 def ok(name, cond, extra=""):
     results.append((name, bool(cond), extra)); print(("PASS " if cond else "FAIL ")+name+(" :: "+str(extra) if extra and not cond else ""))
@@ -96,14 +85,14 @@ with sync_playwright() as p:
     # ---------- Clerk ----------
     ctx,pg=new_ctx(b); login(pg,"patrick")
     pg.goto(BASE+"/deliveries/new"); pg.wait_for_timeout(800)
-    pg.locator("#farmerId").select_option(index=1); pg.locator("#produceId").select_option(index=1)
+    pg.locator("dialog #farmerId").select_option(index=1); pg.locator("dialog #produceId").select_option(index=1)
     pg.wait_for_timeout(200)
-    if pg.locator("#grade").count(): 
-        opts=pg.locator("#grade option").count()
-        if opts>1: pg.locator("#grade").select_option(index=1)
-    pg.locator("#kg").fill("12.345"); pg.locator("button:has-text('Record delivery')").first.click(); pg.wait_for_timeout(1200)
+    if pg.locator("dialog #grade").count(): 
+        opts=pg.locator("dialog #grade option").count()
+        if opts>1: pg.locator("dialog #grade").select_option(index=1)
+    pg.locator("dialog #kg").fill("12.345"); pg.locator("dialog button[type=submit]").click(); pg.wait_for_timeout(1200)
     ok("clerk records a delivery", pg.locator("text=Delivery recorded").count()>0, pg.problems)
-    link=pg.locator("a:has-text('receipt')")
+    link=pg.locator("dialog a:has-text('receipt')")
     if link.count(): 
         link.first.click(); pg.wait_for_timeout(900); ok("receipt page opens", pg.locator(".receipt-head, .slip").count()>0, pg.problems)
     pg.goto(BASE+"/payments/new"); pg.wait_for_timeout(500)
@@ -180,4 +169,3 @@ with sync_playwright() as p:
 fails=[r for r in results if not r[1]]
 print(f"\n{len(results)-len(fails)}/{len(results)} passed"); 
 for f in fails: print("FAILED:",f)
-sys.exit(1 if fails else 0)

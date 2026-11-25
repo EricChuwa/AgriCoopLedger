@@ -1,10 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import Wordmark from "./Wordmark.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const REPO_URL = "https://github.com/EricChuwa/AgriCoopLedger";
 
 export default function SiteFooter() {
   const { user } = useAuth();
+  // The "how it works" and "roles" sections are on the landing page only, so other pages link there.
+  const home = useLocation().pathname === "/" ? "" : "/";
 
   return (
     <footer className="lp-dark lp-footer">
@@ -12,15 +15,15 @@ export default function SiteFooter() {
         <div className="lp-footer-inner">
           <div className="lp-footer-grid">
             <div>
-              <Link className="wordmark" to="/">Agri<span>Coop</span>Ledger</Link>
+              <Wordmark />
               <p>Delivery and payment records for agricultural cooperatives in Rwanda.</p>
             </div>
 
             <nav aria-label="Product">
               <h3>Product</h3>
               <ul>
-                <li><a href="#how-it-works">How it works</a></li>
-                <li><a href="#roles">Manager and clerk roles</a></li>
+                <li><a href={`${home}#how-it-works`}>How it works</a></li>
+                <li><a href={`${home}#roles`}>Manager and clerk roles</a></li>
                 <li>
                   {user
                     ? <Link to="/dashboard">Open dashboard</Link>

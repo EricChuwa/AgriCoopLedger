@@ -42,13 +42,19 @@ Why these choices:
 | `backend/app/services.py` | Money and balance rules, price lookup, Kigali date |
 | `backend/app/audit.py` | Audit entry writer and hash chain verifier |
 | `backend/app/deps.py` | `get_current_user` (session, idle timeout) and `require_role` |
-| `backend/app/routers/` | One file per area: auth, users, cooperative, farmers, produce, deliveries, corrections, payments, audit, reports |
+| `backend/app/routers/` | One file per area: auth, users, cooperative, farmers, produce, deliveries, corrections, payments, batches, audit, reports, public |
 | `backend/app/seed.py` | Synthetic demo cooperative |
-| `backend/tests/` | 125 pytest tests |
+| `backend/tests/` | 163 pytest tests |
 | `frontend/src/api.js` | The only place that calls `fetch` |
 | `frontend/src/context/` | `AuthContext` (who is signed in) and `LedgerContext` (shared data) |
 | `frontend/src/pages/` | One file per screen |
-| `frontend/src/lib/` | Formatting, validation, small hooks |
+| `frontend/src/lib/` | Formatting, validation, small hooks, `theme.js` (light and dark) |
+| `frontend/src/styles/` | `theme.css` and `app.css` (base), `dark.css` (dark tokens), `landing.css`, `polish.css`, `print.css` (paper layouts) |
+| `frontend/src/components/TitleManager.jsx` | Sets the browser tab title on every route |
+| `frontend/public/` | Tab icon (favicon, Apple touch icon, 192 and 512 app icons) and `site.webmanifest` |
+| `scripts/e2e_smoke.py` | The Playwright browser smoke test (60 checks) |
+| `scripts/e2e_new.py` | Playwright checks for enrolment approval, payment batches and the offline queue (14 checks) |
+| `frontend/src/lib/offlineQueue.js`, `context/OfflineContext.jsx` | The Clerk's offline delivery queue |
 | `docker-compose.yml` | db, backend, frontend, backup |
 | `docker-compose.https.yml`, `frontend/Caddyfile` | Hosted demo with HTTPS |
 
@@ -58,12 +64,14 @@ Why these choices:
 |---|---|---|
 | `cooperatives` | name, district, phone | Every other row belongs to one |
 | `users` | name, username, phone, password hash, role, active flag, approval (approved, pending, rejected) | Username and phone are each unique. A pending or rejected user is inactive |
-| `farmers` | name, 16 digit national ID, phone, village, member since, active flag | ID unique per cooperative |
+| `farmers` | name, 16 digit national ID, phone, village, member since, active flag, enrolment (approved, pending, rejected), proposed by, decided by, decision note | ID unique per cooperative. A pending or rejected farmer is inactive |
 | `produce_types` | name, active flag | |
 | `prices` | produce, grade, price per kg, effective from, set by | A new row per change, never an update. This is the price history (FR 3.2) |
 | `deliveries` | farmer, produce, grade, weight in grams, price per kg, value, date, recorded by, void fields, client id | The price is copied onto the row (BR 3) |
 | `corrections` | delivery, old and new weight and grade, reason, status, requester, decider | Status: pending, approved, rejected, direct |
-| `payments` | farmer, amount, method, reference, date, recorded by, void fields, client id | |
+| `payments` | farmer, amount, method, reference, date, recorded by, void fields, client id, batch (optional) | |
+| `payment_batches` | cooperative, made by, note, status (submitted, approved, rejected), decided by, decision note | Part paid and paid are not stored. They are worked out from the payments inside the batch |
+| `batch_lines` | batch, farmer, planned amount | One line per farmer per batch |
 | `audit_log` | who (name copied), action, entity, summary, time, previous hash, own hash | Append only |
 
 Design rules that run through all of it:
@@ -108,9 +116,21 @@ Design rules that run through all of it:
 
 ## 5a. Joining a cooperative
 
-`POST /auth/register` looks for a cooperative whose name matches ignoring case and spacing. If none exists, it creates the cooperative and makes the person its approved Manager. If one exists, it creates the person as pending and inactive (placeholder role clerk) and writes a `user.requested` audit entry. Login checks the password first, then returns 403 with a message for a pending or rejected person, so the message does not reveal that an account exists to someone who does not know the password. The Manager's `POST /users/{id}/approve` (body: role) activates the person and sets the role. `POST /users/{id}/reject` declines a pending request. Both write audit entries and are scoped to the Manager's cooperative (another cooperative's request returns 404).
+`POST /auth/register` looks for a cooperative whose name matches ignoring case and spacing. The sign up form asks what the person is signing up as (`account_type`: manager, clerk or payment_officer). A Manager registration needs a name nobody has used and creates the cooperative with the person as its approved Manager. A Manager registration with a name that exists is refused (409), with a message that says to choose Clerk or Payment Officer to join it. A Clerk or Payment Officer registration needs an existing cooperative (404 otherwise) and creates the person as pending and inactive, holding the role they asked for, and writes a `user.requested` audit entry. The role gives no access until a Manager approves, and the Manager may change it. If `account_type` is left out (an API caller), the name alone decides as before: new name makes a Manager, an existing name makes a pending Clerk. Login checks the password first, then returns 403 with a message for a pending or rejected person, so the message does not reveal that an account exists to someone who does not know the password. The Manager's `POST /users/{id}/approve` (body: role) activates the person and sets the role. `POST /users/{id}/reject` declines a pending request. Both write audit entries and are scoped to the Manager's cooperative (another cooperative's request returns 404).
 
-## 5b. Input validation
+## 5b. Farmer enrolment approval (FR 2.5)
+
+A Clerk who registers a farmer creates a proposal: `enrolment = pending`, `is_active = false`, `proposed_by` set, audit entry `farmer.proposed`. A Manager who registers a farmer creates an approved, active farmer at once (`farmer.created`). Because a pending farmer is inactive, BR 6 already blocks deliveries and payments for them, so the delivery and payment routes needed no extra checks. `POST /farmers/{id}/approve` and `/reject` are Manager only, take an optional note, write `farmer.approved` or `farmer.rejected`, and refuse a farmer who is not pending (409). The person who proposed can never decide their own proposal (BR 10). Activate and deactivate refuse a farmer who is not approved.
+
+## 5c. Payment batches (FR 10)
+
+A Payment Officer makes a batch with `POST /batches`: a list of farmers and a planned amount for each. Each planned amount must be at most that farmer's balance, and a farmer cannot be in two open batches. The batch starts as `submitted`. A Manager approves it or declines it with a reason (`batch.approved`, `batch.rejected`), and never the person who made it. After approval, the Officer records payments with `POST /batches/{id}/payments`. This calls the same `record_payment_core` as a normal payment, so the one-time id, the cooperative lock, the overpayment check, the reference check and the audit entry are shared. Two extra checks apply: the batch must be approved, and the amount must not exceed what is still planned for that farmer. Each payment keeps `batch_id`. Part paid and paid are derived from the live payments with that batch id, so voiding a payment moves a line back by itself. A direct payment (`POST /payments`) is still allowed. Buyer sales and buyer payments are not built.
+
+## 5d. Offline entry for the Clerk (FR 4.9)
+
+When the network is down, the delivery form keeps the delivery in `localStorage` for that user, with its one-time id, and shows it in a "waiting to send" list. When the browser reports it is online again, the queue sends each delivery in order through the normal `POST /deliveries`. Because the one-time id is already part of that route (FR 4.8), a delivery that reached the server but whose answer was lost is not recorded twice. A delivery the server refuses stays in the list with its reason. Limits: there is no service worker, so reloading the page while offline fails (open the form while online first). The queue lives on that device and browser. The 15 minute idle sign-out still applies.
+
+## 5e. Input validation
 
 Every request body inherits a base model that forbids unknown fields. Amounts, prices and ids are strict integers, so `true`, `"1000"` and `1e3` fail. Weight is read from a plain decimal pattern (up to 6 digits and 3 decimals, no sign, exponent or NaN). Dates must be `YYYY-MM-DD`. Names, places, references and one-time ids have fixed patterns and control characters are refused. Digits are ASCII only, so look-alike digits from other scripts fail. Search text is escaped so `%` and `_` match literally. The browser mirrors these checks, the server is the control.
 
@@ -158,6 +178,8 @@ Now:
 | Farmer statement | `GET /farmers/{id}/statement?date_from&date_to` | about 3 KB |
 | Period summary | `GET /reports/summary?...` | about 25 KB |
 | Dashboard | `GET /dashboard` | about 3 KB |
+| Produce mix ring on the dashboard | `GET /reports/produce-mix?period=` (week, month, last_month, quarter or last_quarter) | under 1 KB |
+| Landing page totals (no sign in) | `GET /public/stats` | under 1 KB |
 
 The list endpoints return `{items, total, page, page_size}` plus totals (count, kilograms, value) over *every page of the filter*, computed with SQL `SUM`, so the figure above the table is right even when the table shows 25 rows. Farmers are still loaded in full (a few hundred rows), and `last_delivery_date` comes with each farmer.
 
@@ -177,6 +199,9 @@ The SRS activity description says a retry must not create a duplicate delivery. 
 - Forms use a small `useForm` hook with validation on blur and on submit. Client validation is a convenience. The server validates again.
 - Accessibility: every input has a label, errors are tied to fields, buttons carry visually hidden context (for example "Void D-000012"), tables collapse to labelled rows on a phone.
 - Money is displayed with thousands separators and "RWF", and large tap targets are used for phone browsers.
+- Light and dark themes use semantic colour tokens (`--bg`, `--paper`, `--ink`, `--line` and others). `dark.css` redefines them under `.theme-dark` on the app, the landing page and the sign in pages, so no component carries its own dark colours. `useTheme()` stores the choice in `localStorage` under `agri-theme`, falls back to the device setting, and animates the switch with the View Transitions API where the browser has it (an instant switch elsewhere, and when the person asks for reduced motion). The palette itself does not change between themes.
+- The landing page (`/`) is public. Its totals (cooperatives, active farmers, deliveries, kilograms) come from `GET /api/public/stats`, which needs no sign in and returns only counts across all cooperatives: no names and no per farmer amounts. Voided deliveries are not counted.
+- `Wordmark` shows the logo mark beside the AgriCoopLedger name everywhere the name appears. `TitleManager` sets the tab title to `AgriCoopLedger | <page>` on each route (the home page is just `AgriCoopLedger`). The tab icon is the logo on a linen tile, so the dark book stays visible on a dark browser tab.
 - Reports print through the browser's print dialog (Save as PDF) and download as CSV. The CSV writer prefixes cells that start with `= + - @` with an apostrophe so a spreadsheet cannot run a farmer's name as a formula.
 
 ## 12. Security checklist
@@ -201,10 +226,10 @@ Not done: sign-in rate limiting (argon2's cost is the only brake), two factor si
 
 ## 13. Testing and what was verified
 
-- **125 pytest tests** run against an in-memory SQLite database with separate cookie jars for each simulated person. They cover money rules against hand-calculated values, every role against every route, cooperative isolation, overpayment, voiding, corrections, usernames, duplicate submissions, the audit chain (including deliberately editing and deleting rows), paging, statements, reports, the dashboard, the idle timeout and the seed.
-- **Browser test (Playwright, Chromium):** 36 checks across the three roles: navigation per role, a delivery with the half-up rounding, the correction request and approval, payment with the confirmation box, duplicate reference refusal, voiding, price change, adding and editing staff, the audit integrity check, a statement, no horizontal scroll at phone width, and the redirect when signed out. A separate run advanced the clock to confirm the 15 minute sign-out.
+- **163 pytest tests** run against an in-memory SQLite database with separate cookie jars for each simulated person. They cover money rules against hand-calculated values, every role against every route, cooperative isolation, overpayment, voiding, corrections, usernames, duplicate submissions, the audit chain (including deliberately editing and deleting rows), paging, statements, reports, the dashboard, the idle timeout and the seed.
+- **Browser test (Playwright, Chromium):** 60 checks (`scripts/e2e_smoke.py`, run against a seeded database with the backend and Vite running) across the three roles, the landing page, sign up and the sign in pages in both themes: navigation per role, a delivery with the half-up rounding, the correction request and approval, payment with the confirmation box, duplicate reference refusal, voiding, price change, adding and editing staff, the audit integrity check, a statement, no horizontal scroll at phone width, and the redirect when signed out. A separate run advanced the clock to confirm the 15 minute sign-out.
 - **Performance script:** a year of synthetic data, measured on SQLite in process.
-- **Not verified:** the Docker build and compose stack, PostgreSQL (the code avoids database specific features, but it was not run), the backup container and a restore, the Caddy HTTPS setup, Microsoft Edge, a real Android phone, behaviour on a slow network, and load with real concurrent users on a hosted server. All testing ran in a cloud container, not on your machine. Run `docker compose up`, seed, sign in as each role and run `python -m pytest` on your own machine before presenting.
+- **Not verified:** the Docker build and compose stack (including the production web image), PostgreSQL (the code avoids database specific features, but it was not run), the backup container and a restore, the Caddy HTTPS setup, Microsoft Edge, a real Android phone, a real print dialog on a printer, how the tab icon looks in a real browser, behaviour on a slow network, and load with real concurrent users on a hosted server. All testing ran in a cloud container, not on your machine. Run `docker compose up`, seed, sign in as each role and run `python -m pytest` on your own machine before presenting.
 
 ## 14. SRS traceability
 
@@ -227,7 +252,10 @@ Not done: sign-in rate limiting (argon2's cost is the only brake), two factor si
 | FR 6.1 farmer statement | `GET /farmers/{id}/statement` |
 | FR 6.2 collection report, 6.3 outstanding balances | `GET /reports/summary`, outstanding from farmer balances, `Reports.jsx` |
 | FR 6.4 export | CSV download and print to PDF |
+| FR 6.5 dashboard and produce mix | `GET /dashboard`, `GET /reports/produce-mix`, `Dashboard.jsx`, `ProduceMix.jsx` |
 | FR 7.1 log changes, 7.2 view and filter log | `audit.py`, `routers/audit.py`, `AuditLog.jsx` |
+| FR 9 landing page and open totals | `routers/public.py`, `Landing.jsx`, `FeatureTiles.jsx` |
+| NFR 28 light and dark themes | `lib/theme.js`, `styles/dark.css` |
 | NFR 1 to 4 performance | Measured only on SQLite in process, see section 13 |
 | NFR 5 daily backup | `backup` service in compose |
 | NFR 6 confirmation before saving | Payment confirmation box, reason dialogs for void and correct |
@@ -241,7 +269,7 @@ Not done: sign-in rate limiting (argon2's cost is the only brake), two factor si
 | BR 1 to 7 | Sections 4, 5 and 7 |
 | SRS 2.6 user guide | `docs/user-guide.md` |
 
-SRS version 2.0 (docs/SRS.md) was rewritten to match the build: three roles, grades A, B and C, join approval, strict input. The first draft's Appendix B ideas (offline sync, enrolment approval, payment batches, disputes) were not built and are listed there as future work.
+SRS version 2.2 (kept in the course project as srs_v2) was rewritten to match the build: three roles, grades A, B and C, join approval with an account type at sign up, strict input, the dashboard produce mix, the public landing totals and light and dark themes. Version 2.2 adds three ideas from the first draft: farmer enrolment approval, payment batches (without the buyer side) and the Clerk's offline queue. Disputes, buyer sales and buyer payments are not built and are listed as future work.
 
 ## 15. Decisions you may be asked about
 
@@ -252,7 +280,7 @@ SRS version 2.0 (docs/SRS.md) was rewritten to match the build: three roles, gra
 - **Why do the Manager and Clerk both have a correction path?** The Manager needs to fix a clear mistake quickly. The Clerk is closest to the weighing slip but must not alter their own record, so they ask and a different person decides.
 - **Why SQLite for tests?** Speed and no setup. The models and queries avoid database specific features. The one PostgreSQL specific line, `FOR UPDATE`, is ignored by SQLite.
 - **Why no Alembic yet?** `create_all` is enough while the schema is changing during development. Before real data exists, add migrations. Alembic is already in `requirements.txt`.
-- **What would you do with more time?** Alembic migrations, sign-in throttling, publishing the audit chain head outside the database, an offline queue for the Clerk (the largest real-world gap), payment batches for mobile money, member numbers and collection points, thermal printer receipts.
+- **What would you do with more time?** Alembic migrations, sign-in throttling, publishing the audit chain head outside the database, a service worker so the offline queue survives a reload, buyer sales and buyer payments on top of batches, member numbers and collection points, thermal printer receipts.
 
 ## 16. How to run and demo it
 

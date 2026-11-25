@@ -2,6 +2,10 @@ import os
 
 # Docker Compose sets DATABASE_URL to PostgreSQL. Running without Docker falls back to a local SQLite file.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./agricoop.db")
+# Render and some other hosts give "postgres://" or "postgresql://". SQLAlchemy needs the driver named.
+for _old in ("postgres://", "postgresql://"):
+    if DATABASE_URL.startswith(_old):
+        DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len(_old):]
 
 # Signs the session cookie. Set a long random value in any real deployment.
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")

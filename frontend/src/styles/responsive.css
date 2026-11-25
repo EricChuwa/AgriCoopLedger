@@ -1,0 +1,241 @@
+/* Collapsible sidebar and narrow-window layout. Loaded after app.css and polish.css. */
+
+.app-user-actions { display: flex; align-items: center; gap: .5rem; }
+.app-collapse { display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; flex: none; background: transparent;
+  color: var(--linen); cursor: pointer; border: 1.5px solid rgba(239, 231, 218, .5); border-radius: 9px; }
+.app-collapse:hover { background: rgba(239, 231, 218, .12); }
+.app-collapse:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+
+/* Desktop and wide tablet: the collapsed sidebar is an icon rail */
+@media screen and (min-width: 900px) {
+  .app.rail { grid-template-columns: 4.75rem 1fr; }
+  .rail .app-sidebar { padding: 1.25rem .6rem 1rem; align-items: stretch; overflow-x: hidden; }
+  .rail .app-brand { padding: 0; justify-content: center; display: flex; }
+  .rail .wordmark-text, .rail .app-group-label, .rail .app-link span, .rail .app-user-name, .rail .app-user-meta,
+  .rail .app-account, .rail .app-signout-text { display: none; }
+  .rail .app-link { justify-content: center; padding: .7rem 0; }
+  .rail .app-group { margin-bottom: .6rem; padding-bottom: .6rem; border-bottom: 1px solid rgba(239, 231, 218, .16); }
+  .rail .app-group:last-child { border-bottom: 0; }
+  .rail .app-user { padding: .8rem 0 0; }
+  .rail .app-user-actions { flex-direction: column; }
+  .rail .app-signout { padding: 0; width: 2.4rem; height: 2.4rem; justify-content: center; }
+}
+/* On phones the drawer is always full width, never a rail */
+@media screen and (max-width: 899px) { .app-collapse { display: none; } }
+
+/* Half screen and iPad: tiles and grids reflow instead of squeezing text */
+@media screen and (max-width: 1400px) { .app:not(.rail) .dgrid { grid-template-columns: minmax(0, 1fr); } .app:not(.rail) .dcol-right { grid-column: auto; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); } }
+@media screen and (max-width: 1230px) {
+  .dgrid { grid-template-columns: minmax(0, 1fr); }
+  .dcol-right { grid-column: auto; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .quick-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media screen and (max-width: 700px) { .dcol-right { grid-template-columns: 1fr; } .quick-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.app-main { overflow-x: clip; }
+
+
+
+/* Close (x) button at the top right of every pop up */
+dialog.dialog .dialog-body { position: relative; }
+dialog.dialog .dialog-x { position: absolute; top: -.35rem; right: -.35rem; z-index: 2; display: grid; place-items: center;
+  width: 2.75rem; height: 2.75rem; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+dialog.dialog .dialog-x:hover { background: rgba(0, 38, 38, .08); }
+dialog.dialog .dialog-x:focus-visible { outline: 3px solid var(--evergreen); outline-offset: 2px; }
+dialog.dialog .dialog-body > h2 { padding-right: 2.5rem; }
+
+/* Info icon with a hover / focus / tap tooltip */
+.info-tip { position: relative; display: inline-block; vertical-align: middle; margin-left: .35rem; }
+.info-tip-btn { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: inherit; cursor: help; }
+.info-tip-btn:hover { background: rgba(0, 38, 38, .08); }
+.info-tip-btn:focus-visible { outline: 3px solid var(--evergreen); outline-offset: 1px; }
+.info-tip-bubble { position: absolute; left: 50%; top: calc(100% + .4rem); transform: translateX(-50%); z-index: 20; width: max-content; max-width: min(22rem, 80vw);
+  padding: .6rem .8rem; border-radius: 10px; background: var(--evergreen); color: var(--linen); font-size: .9rem; line-height: 1.4; font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 38, 38, .3); opacity: 0; visibility: hidden; transition: opacity .12s ease; pointer-events: none; }
+.info-tip:hover .info-tip-bubble, .info-tip:focus-within .info-tip-bubble { opacity: 1; visibility: visible; }
+@media screen and (max-width: 520px) { .info-tip { position: static; } .info-tip-bubble { left: 0; right: 0; transform: none; width: auto; max-width: none; } }
+p:has(> .info-tip) { position: relative; }
+.info-tip { position: static; }
+.info-tip-bubble { left: 0; transform: none; top: calc(100% + .2rem); }
+
+.dpanel { min-width: 0; }
+@media screen and (max-width: 640px) { .dstats { grid-template-columns: 1fr; } }
+
+/* Wide tables scroll inside their own box instead of being clipped */
+.table-scroll { max-width: 100%; overflow-x: auto; border-radius: var(--radius-card, 14px); }
+.table-scroll > .table { margin: 0; }
+@media screen and (min-width: 761px) { .table-scroll > .table:not(.statement):not(.table-flat) { min-width: 52rem; } }
+@media print { .table-scroll { overflow: visible; } }
+
+
+/* Produce button with a hover list, at the top of each dashboard */
+.produce-menu { position: relative; display: inline-block; margin: 0 0 1.1rem; }
+.produce-btn { display: inline-flex; align-items: center; gap: .5rem; padding: .6rem 1.1rem; border: 1.5px solid var(--evergreen); border-radius: 99px;
+  background: var(--paper); color: var(--evergreen); font: inherit; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-card); }
+.produce-btn:hover, .produce-menu:focus-within .produce-btn { background: var(--lime); }
+.produce-btn:focus-visible { outline: 3px solid var(--evergreen); outline-offset: 2px; }
+.produce-pop { position: absolute; left: 0; top: calc(100% + .35rem); z-index: 25; min-width: 15rem; max-width: min(22rem, 90vw); padding: .9rem 1.1rem;
+  border-radius: 14px; background: var(--evergreen); color: var(--linen); border: 2px solid var(--lime); box-shadow: 0 10px 28px rgba(0, 38, 38, .35);
+  opacity: 0; visibility: hidden; transition: opacity .12s ease; }
+.produce-menu:hover .produce-pop, .produce-menu:focus-within .produce-pop { opacity: 1; visibility: visible; }
+.produce-pop::before { content: ""; position: absolute; left: 0; right: 0; top: -.45rem; height: .45rem; } /* keeps the hover unbroken */
+.produce-pop-title { margin: 0 0 .5rem; font-weight: 700; color: var(--lime); }
+.produce-pop ul { list-style: none; margin: 0 0 .7rem; padding: 0; display: grid; gap: .25rem; font-weight: 600; }
+.produce-pop li.is-off { opacity: .6; font-weight: 400; }
+.produce-pop-empty { font-weight: 400; }
+.produce-pop-link { display: flex; align-items: center; gap: .35rem; padding: .3rem 0; color: var(--linen); font-weight: 600; }
+.produce-pop-link:hover { color: var(--lime); }
+
+/* Dark mode: the Produce button and its list stay readable against the dark cards */
+.app.theme-dark .produce-btn { background: var(--paper-hi); color: var(--linen); border-color: rgba(239, 231, 218, .4); box-shadow: none; }
+.app.theme-dark .produce-btn:hover, .app.theme-dark .produce-menu:focus-within .produce-btn { background: var(--lime); color: #002626; border-color: var(--lime); }
+.app.theme-dark .produce-pop { background: var(--paper-hi); }
+
+/* Record payment buttons that used to be links */
+button.balance-pay { background: transparent; border: 0; padding: 0; font: inherit; font-size: .9rem; font-weight: 600; text-align: left; text-decoration: underline; cursor: pointer; }
+
+/* Phones: table rows are small cards (name and the key fact). Tap one to see the rest. */
+@media screen and (max-width: 760px) {
+  .table-scroll > .table:not(.statement) { min-width: 0; }
+  .table-scroll > .table:not(.statement) > tbody > tr:not(:has(input, select, td[colspan])) {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: .6rem;
+    padding: .2rem 1rem; margin-bottom: .55rem; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])) > th,
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])) > td:first-child { grid-column: 1; padding: .55rem 0; text-align: left; }
+  /* hide everything except the name and the key fact until the card is opened */
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not([data-open="true"]) > td { display: none; }
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not([data-open="true"]) > td:has(.pill),
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not(:has(.pill)):not([data-open="true"]) > td[data-label="Amount"],
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not(:has(.pill)):not([data-open="true"]) > td[data-label="Value"],
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not(:has(.pill)):not([data-open="true"]) > td[data-label="Balance owed"],
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not(:has(.pill)):not([data-open="true"]) > td[data-label="Owed"] {
+    display: flex; grid-column: 2; padding: .55rem 0; white-space: nowrap; }
+  .table-scroll > .table > tbody > tr:not([data-open="true"]) > td[data-label]::before { display: none; }
+  /* the chevron */
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan]))::after { content: ""; grid-column: 3; grid-row: 1; width: .55rem; height: .55rem;
+    border-right: 2.5px solid var(--teal); border-bottom: 2.5px solid var(--teal); transform: rotate(45deg); transition: transform .15s ease; margin-right: .15rem; }
+  .table-scroll > .table > tbody > tr[data-open="true"]::after { transform: rotate(-135deg); }
+  /* opened: the other details, one per line, under the name */
+  .table-scroll > .table > tbody > tr[data-open="true"] > td { grid-column: 1 / -1; }
+  .table-scroll > .table > tbody > tr[data-open="true"] > th { grid-row: 1; }
+  .table-scroll > .table > tbody > tr[data-open="true"] > td:has(.pill) { grid-column: 2; grid-row: 1; }
+  .table-scroll > .table > tbody > tr[data-open="true"] { padding-bottom: .5rem; border-color: var(--teal); }
+  .table-scroll > .table > tbody > tr:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+}
+@media screen and (max-width: 760px) and (prefers-reduced-motion: reduce) { .table-scroll > .table > tbody > tr::after { transition: none; } }
+
+/* Tables whose first column is a date (payments, deliveries): the farmer is the name on the small card */
+@media screen and (max-width: 760px) {
+  .table-scroll > .table > tbody > tr:has(> td[data-label="Farmer"]):not([data-open="true"]) > th { display: none; }
+  .table-scroll > .table > tbody > tr:has(> td[data-label="Farmer"]):not([data-open="true"]) > td[data-label="Farmer"] {
+    display: block; grid-column: 1; grid-row: 1; padding: .6rem 0; text-align: left; font-weight: 600; }
+  .table-scroll > .table > tbody > tr:has(> td[data-label="Farmer"]):not([data-open="true"]) > td[data-label="Farmer"]::before { display: none; }
+  .table-scroll > .table > tbody > tr:has(> td[data-label="Farmer"]):not([data-open="true"]) > td[data-label="Amount"],
+  .table-scroll > .table > tbody > tr:has(> td[data-label="Farmer"]):not([data-open="true"]) > td[data-label="Value"] { grid-row: 1; }
+  .table-scroll > .table > tbody > tr[data-open="true"] > td[data-label="Farmer"] { grid-row: auto; }
+}
+@media screen and (max-width: 760px) {
+  .table-scroll > .table > tbody > tr:not([data-open="true"]) > td[data-label="Farmer"] { text-align: left; }
+  .table-scroll > .table > tbody > tr:not([data-open="true"]) > td[data-label="Farmer"] .cell-sub,
+  .table-scroll > .table > tbody > tr:not([data-open="true"]) > td[data-label="Farmer"] .cell-stack > :not(:first-child) { display: none; }
+}
+
+/* Dashboard lists: one line per entry (name on the left, amount on the far right) */
+@media screen and (max-width: 760px) {
+  .dpanel .table-scroll > .table > tbody > tr:not([data-open="true"]) > th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .dpanel .table-scroll > .table > tbody > tr:not([data-open="true"]) > th .cell-sub { display: none; }
+  .dpanel .table-scroll > .table > tbody > tr:not([data-open="true"]) { padding-block: 0; }
+}
+@media screen and (max-width: 760px) {
+  .dpanel .table-scroll > .table > tbody > tr:not([data-open="true"]) { column-gap: .4rem; padding-inline: .8rem; font-size: .92rem; }
+  .dpanel .table-scroll > .table > tbody > tr:not([data-open="true"]) > td[data-label] { font-size: .88rem; }
+}
+
+/* Phones: the bottom bar's Menu button opens the menu as a sheet that rises out of that button */
+.app-menu { display: none !important; }
+@media screen and (max-width: 899px) {
+  .app .app-sidebar { left: auto; top: auto; right: .6rem; bottom: 6.1rem; width: min(20rem, calc(100vw - 1.2rem));
+    height: auto; max-height: calc(100dvh - 8rem); border-radius: 22px; box-shadow: 0 16px 40px rgba(0, 38, 38, .45);
+    transform-origin: calc(100% - 2.2rem) 100%; transform: translateY(1rem) scale(.3); opacity: 0; visibility: hidden;
+    transition: transform .26s cubic-bezier(.2, .85, .25, 1), opacity .18s ease, visibility 0s linear .26s; }
+  .app .app-sidebar.is-open { transform: none; opacity: 1; visibility: visible;
+    transition: transform .3s cubic-bezier(.2, .85, .25, 1.05), opacity .15s ease, visibility 0s; }
+  .app .app-sidebar .app-link { padding-block: .5rem; }
+}
+@media (prefers-reduced-motion: reduce) { .app .app-sidebar, .app .app-sidebar.is-open { transition: none; } }
+@media screen and (max-width: 899px) {
+  .app .app-tabs { z-index: 45; }          /* above the dim layer, so the Menu button can also close the sheet */
+  .app .app-sidebar .app-brand { display: none; }
+  .app .app-sidebar { padding-top: 1rem; gap: .5rem; }
+  .app .app-sidebar .app-group { margin-bottom: .7rem; }
+}
+@media screen and (max-width: 899px) { .app .app-sidebar .app-user { padding-top: .6rem; } .app .app-sidebar .app-user-meta { margin-bottom: .4rem; } .app .app-account { margin-bottom: .6rem; } }
+
+/* Sidebar profile: avatar, name and role, with an "i" for the sample data note */
+.app-user { position: relative; }
+.app-profile { display: flex; align-items: center; gap: .4rem; margin-bottom: .8rem; }
+.app-profile-link { display: flex; align-items: center; gap: .7rem; flex: 1 1 auto; min-width: 0; padding: .3rem; border-radius: 12px; color: var(--linen); text-decoration: none; }
+.app-profile-link:hover { background: rgba(239, 231, 218, .12); }
+.app-profile-link.active { background: rgba(239, 231, 218, .18); }
+.app-profile-link:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+.app-profile-link .app-avatar { flex: none; background: var(--lime); color: var(--evergreen); }
+.app-profile-text { display: grid; min-width: 0; }
+.app-profile-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-profile-role { font-size: .85rem; color: rgba(239, 231, 218, .8); }
+.app-sidebar .info-tip--side { position: static; margin: 0; flex: none; }
+.app-sidebar .info-tip--side .info-tip-btn { color: var(--linen); }
+.app-sidebar .info-tip--side .info-tip-btn:hover { background: rgba(239, 231, 218, .14); }
+.app-sidebar .info-tip--side .info-tip-bubble { top: auto; bottom: calc(100% + .2rem); left: 0; right: 0; width: auto; max-width: none; transform: none;
+  background: var(--linen); color: var(--evergreen); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+@media screen and (min-width: 900px) {
+  .rail .app-profile { justify-content: center; margin-bottom: .6rem; }
+  .rail .app-profile-text, .rail .info-tip--side { display: none; }
+  .rail .app-profile-link { padding: .2rem; flex: 0 0 auto; justify-content: center; margin: 0 auto; }
+}
+/* the "i" inside a dark page heading or card inherits its colour */
+.app-main p .info-tip-btn { color: inherit; }
+
+/* Phones: the top strip (theme, bell, profile) goes; dark mode lives in the menu, the profile is in the menu too */
+.app-theme-row { display: none; }
+.app-link-count { margin-left: auto; min-width: 1.4rem; padding: .05rem .4rem; border-radius: 99px; background: var(--cayenne); color: #fff; font-size: .78rem; font-weight: 700; text-align: center; }
+@media screen and (max-width: 899px) {
+  .app .app-top { display: none; }
+  .app .app-theme-row { display: flex; align-items: center; gap: .7rem; width: 100%; margin: 0 0 .7rem; padding: .55rem .75rem; border: 0; border-radius: 9px;
+    background: transparent; color: var(--linen); font: inherit; font-weight: 500; cursor: pointer; text-align: left; }
+  .app .app-theme-row:hover { background: rgba(239, 231, 218, .12); }
+  .app .app-theme-row:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+}
+
+/* Phones: the profile lives in the menu sheet; wide screens: top bar only */
+.app-topbar-profile { display: none; }
+@media screen and (max-width: 899px) {
+  .app .app-topbar-profile { display: none; }
+  .app .app-topbar-chip { display: flex; align-items: center; gap: .5rem; padding: .2rem .7rem .2rem .2rem; border-radius: 99px; color: var(--linen); text-decoration: none; font-weight: 600; background: rgba(239, 231, 218, .12); }
+  .app .app-topbar-chip .app-avatar { width: 34px; height: 34px; background: var(--lime); color: var(--evergreen); }
+  .app .app-topbar-chip:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+  .app-topbar .info-tip { position: static; margin: 0; }
+  .app-topbar .info-tip-btn { color: var(--linen); }
+  .app-topbar .info-tip-bubble { position: absolute; top: calc(100% + .5rem); right: 0; left: auto; transform: none; width: max-content; max-width: min(18rem, 84vw);
+    background: var(--linen); color: var(--evergreen); }
+  .app-topbar-profile:focus-within .info-tip-bubble, .app-topbar .info-tip:hover .info-tip-bubble { opacity: 1; visibility: visible; }
+}
+/* wide screens: the profile is in the top bar only, so the sidebar does not repeat it */
+@media screen and (min-width: 900px) {
+  .app .app-sidebar .app-profile { display: none; }
+}
+
+/* The sample data note lives in the sidebar/menu only: a row with the cooperative name and an "i" */
+.app-coop-row { display: none; }
+@media screen and (max-width: 899px) {
+  .app .app-coop-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin: 0 0 .5rem; padding: 0 .75rem; color: rgba(239, 231, 218, .85); font-size: .9rem; }
+  .app .app-sidebar .app-coop-row .info-tip--side .info-tip-bubble { bottom: calc(100% + .2rem); }
+}
+
+
+/* Sales summary and stock */
+.sales-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .75rem; margin: 0 0 1rem; }
+.sales-sum > div { display: grid; gap: .2rem; padding: .8rem 1rem; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; }
+.sales-sum span { font-size: .85rem; color: var(--teal); }
+.sales-sum strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.sales-stock { margin: 0 0 1rem; }
+.sales-stock > summary { cursor: pointer; font-weight: 700; padding: .4rem 0; }

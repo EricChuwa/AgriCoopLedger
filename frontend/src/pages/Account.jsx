@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api.js";
 import Alert from "../components/Alert.jsx";
+import CoopName from "../components/CoopName.jsx";
 import Field from "../components/Field.jsx";
 import PasswordInput from "../components/PasswordInput.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -61,7 +62,7 @@ export default function Account() {
             <div className="slip-row"><dt>Username</dt><dd>{user.username}</dd></div>
             <div className="slip-row"><dt>Phone</dt><dd>{formatPhone(user.phone)}</dd></div>
             <div className="slip-row"><dt>Role</dt><dd>{ROLE_LABEL[user.role]}</dd></div>
-            <div className="slip-row"><dt>Cooperative</dt><dd>{coop.name}</dd></div>
+            <div className="slip-row"><dt>Cooperative</dt><dd><CoopName name={coop.name} /></dd></div>
           </dl>
         </section>
 

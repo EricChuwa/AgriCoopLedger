@@ -330,6 +330,9 @@ class FarmerOut(BaseModel):
     is_active: bool
     balance: int
     last_delivery_date: date | None = None
+    enrolment: str = "approved"  # approved, pending (a Clerk proposed it) or rejected
+    proposed_by: str | None = None
+    decision_note: str | None = None
 
 
 # ---------- produce and prices ----------
@@ -373,6 +376,7 @@ class ProduceOut(BaseModel):
     name: str
     is_active: bool
     prices: list[PriceOut]  # every price ever set, newest first (FR 3.3)
+    selling_prices: list[PriceOut] = []  # what the cooperative sells at, newest first (FR 12)
 
 
 # ---------- deliveries and corrections ----------
@@ -423,6 +427,50 @@ class CorrectionRequestIn(CorrectIn):
     delivery_id: Id
 
 
+class DisputeIn(Body):
+    """Exactly one of delivery_id and payment_id."""
+    delivery_id: Id | None = None
+    payment_id: Id | None = None
+    reason: str = Field(min_length=5, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def check_reason(cls, v: str) -> str:
+        v = free_text(v, "The reason")
+        if len(v) < 5:
+            raise ValueError("Give a reason of at least 5 characters.")
+        return v
+
+
+class DisputeDecisionIn(Body):
+    note: str = Field(min_length=5, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def check_note(cls, v: str) -> str:
+        v = free_text(v, "The note")
+        if len(v) < 5:
+            raise ValueError("Give a note of at least 5 characters.")
+        return v
+
+
+class DisputeOut(BaseModel):
+    id: int
+    number: str
+    kind: str  # delivery or payment
+    record_id: int
+    record_no: str
+    farmer_name: str
+    summary: str
+    status: str
+    reason: str
+    raised_by: str
+    created_at: datetime
+    decided_by: str | None
+    decided_at: datetime | None
+    decision_note: str | None
+
+
 class DecisionIn(Body):
     note: str = Field(default="", max_length=500)
 
@@ -455,6 +503,10 @@ class DeliveryOut(BaseModel):
     voided: VoidInfo | None
     corrected: bool
     pending_correction: bool
+    # Worked out on the server (FR 4.9): recorded, correction_pending, disputed or voided; and unpaid, in_batch,
+    # part_paid, paid or none (voided).
+    status: str = "recorded"
+    payment_status: str = "unpaid"
 
 
 class CorrectionOut(BaseModel):
@@ -505,6 +557,8 @@ class PaymentIn(Body):
 
 class PaymentOut(BaseModel):
     id: int
+    batch_id: int | None = None
+    batch_no: str | None = None
     receipt_no: str
     farmer_id: int
     farmer_name: str
@@ -515,6 +569,7 @@ class PaymentOut(BaseModel):
     recorded_by: str
     created_at: datetime
     voided: VoidInfo | None
+    disputed: bool = False  # an open dispute exists (FR 11)
 
 
 # ---------- paged lists, statements, reports, dashboard ----------
@@ -613,6 +668,17 @@ class LargestBalance(BaseModel):
     owed: int
 
 
+class TotalsOut(BaseModel):
+    period: str
+    label: str
+    date_from: date
+    date_to: date
+    received_kg: float
+    deliveries: int
+    paid: int
+    farmers: int
+
+
 class DashboardOut(BaseModel):
     total_owed: int
     farmers_owed: int
@@ -621,6 +687,8 @@ class DashboardOut(BaseModel):
     paid_today: int
     farmers_this_week: int
     pending_corrections: int
+    farmers_waiting: int = 0  # farmers a Clerk proposed that a Manager has not decided (Manager only)
+    batches_waiting: int = 0  # payment batches waiting for approval (Manager only)
     week: list[WeekDay]
     produce_week: list[ProduceShare] = []
     largest_balances: list[LargestBalance]
@@ -646,3 +714,244 @@ class PublicStatsOut(BaseModel):
     farmers: int
     deliveries: int
     total_kg: float
+
+
+# ---------- payment batches ----------
+
+class BatchLineIn(Body):
+    farmer_id: Id
+    amount: Rwf
+
+
+class BatchIn(Body):
+    note: str = Field(default="", max_length=200)
+    lines: list[BatchLineIn] = Field(min_length=1, max_length=200)
+
+    @field_validator("note")
+    @classmethod
+    def check_note(cls, v: str) -> str:
+        return free_text(v, "The note")
+
+
+class BatchLineOut(BaseModel):
+    farmer_id: int
+    farmer_name: str
+    planned: int
+    paid: int
+    remaining: int
+    status: str  # unpaid, part_paid or paid
+
+
+class BatchOut(BaseModel):
+    id: int
+    number: str
+    status: str  # submitted, approved, rejected, part_paid or paid
+    note: str
+    created_by: str
+    created_at: datetime
+    decided_by: str | None = None
+    decided_at: datetime | None = None
+    decision_note: str | None = None
+    farmers: int
+    planned: int
+    paid: int
+
+
+class BatchDetail(BatchOut):
+    lines: list[BatchLineOut]
+
+
+# ---------- buyer side (FR 12) ----------
+
+class PublicOrderIn(Body):
+    """A buyer's request from the public Buy page. No sign in."""
+    cooperative_id: Id
+    produce_id: Id
+    grade: Grade
+    weight_kg: Kg
+    buyer_name: str
+    buyer_phone: str
+    note: str = Field(default="", max_length=300)
+
+    @field_validator("weight_kg")
+    @classmethod
+    def check_weight(cls, v: Decimal) -> Decimal:
+        return _kg(v)
+
+    @field_validator("buyer_name")
+    @classmethod
+    def check_name(cls, v: str) -> str:
+        return person_name(v, "Your name")
+
+    @field_validator("buyer_phone")
+    @classmethod
+    def check_phone(cls, v: str) -> str:
+        return normalize_phone(v)
+
+    @field_validator("note")
+    @classmethod
+    def check_note(cls, v: str) -> str:
+        return free_text(v, "The note")
+
+
+class StockItemOut(BaseModel):
+    produce_id: int
+    produce_name: str
+    grade: str
+    available_kg: float
+
+
+class PublicStockOut(BaseModel):
+    cooperative_id: int
+    cooperative_name: str
+    district: str
+    items: list[StockItemOut]
+
+
+class PublicOrderOut(BaseModel):
+    number: str
+    cooperative_name: str
+    summary: str
+
+
+class OrderOut(BaseModel):
+    id: int
+    number: str
+    status: str
+    buyer_name: str
+    buyer_phone: str
+    produce_id: int
+    produce_name: str
+    grade: str
+    weight_kg: float
+    note: str
+    created_at: datetime
+    handled_by: str | None
+    handled_at: datetime | None
+    decline_reason: str | None
+    sale_id: int | None = None
+    sale_no: str | None = None
+
+
+class AcceptOrderIn(Body):
+    price_per_kg: PricePerKg | None = None  # the Manager's selling price is used; a different value is refused
+    sale_date: IsoDate = None
+
+
+class SaleIn(Body):
+    buyer_name: str
+    buyer_phone: str
+    produce_id: Id
+    grade: Grade
+    weight_kg: Kg
+    price_per_kg: PricePerKg | None = None  # the Manager's selling price is used; a different value is refused
+    sale_date: IsoDate = None
+    client_id: str | None = Field(default=None, min_length=8, max_length=64)
+
+    @field_validator("weight_kg")
+    @classmethod
+    def check_weight(cls, v: Decimal) -> Decimal:
+        return _kg(v)
+
+    @field_validator("buyer_name")
+    @classmethod
+    def check_name(cls, v: str) -> str:
+        return person_name(v, "The buyer's name")
+
+    @field_validator("buyer_phone")
+    @classmethod
+    def check_phone(cls, v: str) -> str:
+        return normalize_phone(v)
+
+    @field_validator("client_id")
+    @classmethod
+    def check_client_id(cls, v: str | None) -> str | None:
+        return _client_id(v)
+
+
+class SaleOut(BaseModel):
+    id: int
+    number: str
+    order_no: str | None
+    buyer_name: str
+    buyer_phone: str
+    produce_name: str
+    grade: str
+    weight_kg: float
+    price_per_kg: int
+    value: int
+    sale_date: date
+    recorded_by: str
+    created_at: datetime
+    confirmed: int       # buyer payments a Payment Officer has confirmed
+    pending: int         # recorded but not yet confirmed
+    owed: int            # value minus confirmed
+    status: str          # unpaid, part_paid, paid or voided
+    voided: VoidInfo | None
+
+
+class BuyerPaymentIn(Body):
+    amount: Rwf
+    method: Method
+    reference: str = Field(default="", max_length=60)
+    payment_date: IsoDate = None
+    client_id: str | None = Field(default=None, min_length=8, max_length=64)
+
+    @field_validator("reference")
+    @classmethod
+    def check_reference(cls, v: str) -> str:
+        v = v.strip()
+        if v and not _REFERENCE.fullmatch(v):
+            raise ValueError("A reference can only use letters, digits and . _ / # -")
+        return v
+
+    @field_validator("client_id")
+    @classmethod
+    def check_client_id(cls, v: str | None) -> str | None:
+        return _client_id(v)
+
+
+class BuyerPaymentOut(BaseModel):
+    id: int
+    number: str
+    sale_id: int
+    sale_no: str
+    buyer_name: str
+    amount: int
+    method: str
+    reference: str
+    payment_date: date
+    status: str
+    recorded_by: str
+    created_at: datetime
+    decided_by: str | None
+    decided_at: datetime | None
+    decision_note: str | None
+
+
+class StockLineOut(BaseModel):
+    produce_name: str
+    grade: str
+    received_kg: float
+    sold_kg: float
+    on_hand_kg: float
+
+
+class SalesSummaryOut(BaseModel):
+    sold: int
+    confirmed: int
+    pending: int
+    owed: int
+    new_orders: int
+    stock: list[StockLineOut]
+    paid_to_farmers: int
+    owed_to_farmers: int
+
+
+class OptionalNoteIn(Body):
+    note: str = Field(default="", max_length=300)
+
+    @field_validator("note")
+    @classmethod
+    def check_note(cls, v: str) -> str:
+        return free_text(v, "The note")

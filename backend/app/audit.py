@@ -38,12 +38,19 @@ def lock_cooperative(db: Session, cooperative_id: int) -> None:
 def record(db: Session, user: User, action: str, entity_type: str, entity_id: int, summary: str) -> None:
     """Add an audit entry in the caller's transaction, so the change and its log entry save together
     or not at all (FR 7.1). The caller commits."""
+    record_for(db, user.cooperative_id, user.id, user.full_name, action, entity_type, entity_id, summary)
+
+
+def record_for(db: Session, cooperative_id: int, user_id: int | None, user_name: str, action: str,
+               entity_type: str, entity_id: int, summary: str) -> None:
+    """The same, for an action with no signed in user (a buyer's public order request). The name is the
+    buyer's own words and says so in the summary."""
     # The same lock stops two requests chaining onto the same previous entry.
-    lock_cooperative(db, user.cooperative_id)
-    last = db.scalar(select(AuditEntry.entry_hash).where(AuditEntry.cooperative_id == user.cooperative_id)
+    lock_cooperative(db, cooperative_id)
+    last = db.scalar(select(AuditEntry.entry_hash).where(AuditEntry.cooperative_id == cooperative_id)
                      .order_by(AuditEntry.id.desc()).limit(1))
     entry = AuditEntry(
-        cooperative_id=user.cooperative_id, user_id=user.id, user_name=user.full_name, action=action,
+        cooperative_id=cooperative_id, user_id=user_id, user_name=user_name, action=action,
         entity_type=entity_type, entity_id=entity_id, summary=summary[:400],
         created_at=datetime.now(timezone.utc), prev_hash=last or GENESIS,
     )

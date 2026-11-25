@@ -82,7 +82,7 @@ export default function Corrections() {
       {shown.length === 0 ? (
         <div className="empty-block"><p>{filter === "pending" ? "No corrections are waiting." : "No corrections yet."}</p></div>
       ) : (
-        <table className="table table-numbers">
+        <div className="table-scroll"><table className="table table-numbers">
           <thead>
             <tr>
               <th scope="col">Delivery</th>
@@ -125,7 +125,7 @@ export default function Corrections() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
 
       {deciding && (

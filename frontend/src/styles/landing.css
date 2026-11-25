@@ -34,7 +34,7 @@
   text-decoration: none;
   transition: transform 0.12s, box-shadow 0.12s;
 }
-.lp-btn:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--evergreen); }
+.lp-btn:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--evergreen); }
 .lp-btn--small { min-height: 2.5rem; padding: 0 1.1rem; font-size: 0.9375rem; box-shadow: 3px 3px 0 var(--evergreen); }
 .lp-btn--dark { border-color: var(--lime); box-shadow: 4px 4px 0 var(--teal); }
 .lp-btn--dark:hover { box-shadow: 2px 2px 0 var(--teal); }
@@ -63,8 +63,8 @@
 }
 /* No chip behind the logo. On the light bar "Coop" sits on a lime highlight; on the dark bar it is lime text. */
 .lp-nav .wordmark { padding: 0.55rem 0.9rem; color: var(--ink); }
-.lp-nav .wordmark span { padding: 0.05em 0.14em; margin-inline: 0.04em; color: var(--evergreen); background: var(--lime); border-radius: 5px; }
-.lp-page.theme-dark .lp-nav .wordmark span { padding: 0; margin: 0; color: var(--lime); background: none; }
+.lp-nav .wordmark-text > span { padding: 0.05em 0.14em; margin-inline: 0.04em; color: var(--evergreen); background: var(--lime); border-radius: 5px; }
+.lp-page.theme-dark .lp-nav .wordmark-text > span { padding: 0; margin: 0; color: var(--lime); background: none; }
 
 .lp-nav-links { display: flex; justify-content: center; gap: 0.25rem; }
 .lp-nav-links a {
@@ -157,7 +157,7 @@
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
-.lp-float:hover { transform: translateY(-3px); background: rgba(0, 38, 38, 0.75); }
+.lp-float:hover { transform: translateY(-1px); background: rgba(0, 38, 38, 0.75); }
 .lp-float:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }
 .lp-float-go { flex: none; margin-left: auto; color: var(--lime); }
 .lp-float img { flex: none; width: 5.25rem; height: 5.25rem; object-fit: cover; border-radius: 12px; }
@@ -367,11 +367,11 @@
 .lp-tile h3 { margin-top: auto; }
 @media (prefers-reduced-motion: no-preference) {
   .lp-tile { transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.25s ease; }
-  .lp-tile:hover { transform: translateY(-6px); box-shadow: 0 22px 30px -20px rgba(0, 20, 20, 0.55); }
+  .lp-tile:hover { transform: translateY(-2px); box-shadow: 0 12px 22px -18px rgba(0, 20, 20, 0.55); }
   .lp-tile-icon { transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.4); }
-  .lp-tile:hover .lp-tile-icon { transform: rotate(-10deg) scale(1.12); }
+  .lp-tile:hover .lp-tile-icon { transform: rotate(-3deg) scale(1.04); }
   .lp-tile--photo img { transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
-  .lp-tile--photo:hover img { transform: scale(1.06); }
+  .lp-tile--photo:hover img { transform: scale(1.02); }
 }
 
 /* The interactive ledger */
@@ -473,7 +473,7 @@
   box-shadow: 8px 8px 0 var(--deep);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.lp-role:hover { transform: translate(-3px, -3px); box-shadow: 11px 11px 0 var(--deep); }
+.lp-role:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 var(--deep); }
 .lp-role > p { margin: 0.35rem 0 0; color: var(--teal); font-size: clamp(1rem, 0.85rem + 0.3vw, 1.25rem); }
 .lp-role li { border-top: 1px solid var(--rule); }
 .lp-role--manager { --tick: var(--lime); background: var(--evergreen); color: var(--linen); }

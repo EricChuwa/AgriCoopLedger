@@ -145,3 +145,24 @@ def test_produce_mix_endpoint_filters_by_period_and_skips_voided(world):
             r = client.get("/api/reports/produce-mix", params={"period": period}).json()
             assert r["total_kg"] == 40 and [(i["name"], i["kg"]) for i in r["items"]] == [("Maize", 40)]
     assert world.manager.get("/api/reports/produce-mix", params={"period": "year"}).status_code == 422
+
+
+def test_dashboard_totals_follow_the_chosen_period(world):
+    old = (today() - timedelta(days=3)).isoformat()
+    first = world.deliver(farmer=world.farmer, kg=100).json()
+    world.deliver(farmer=world.farmer2, kg=40)
+    world.deliver(farmer=world.farmer2, kg=7, date=old)
+    world.deliver(farmer=world.farmer2, kg=5, date=(today() - timedelta(days=400)).isoformat())
+    world.manager.post(f"/api/deliveries/{first['id']}/void", json={"reason": "entered twice"})
+    world.pay(farmer=world.farmer2, amount=1000)
+    for client in (world.manager, world.clerk, world.officer):
+        day = client.get("/api/dashboard/totals", params={"period": "day"}).json()
+        assert (day["received_kg"], day["deliveries"], day["farmers"], day["paid"]) == (40, 1, 1, 1000)
+        assert day["label"] == "Today"
+        week = client.get("/api/dashboard/totals", params={"period": "week"}).json()
+        assert (week["received_kg"], week["deliveries"], week["farmers"]) == (47, 2, 1)
+        assert client.get("/api/dashboard/totals").json()["period"] == "day"
+    assert world.manager.get("/api/dashboard/totals", params={"period": "year"}).status_code == 422
+    from datetime import date
+    from app.routers.reports import period_bounds
+    assert period_bounds(date(2026, 11, 24), "day") == (date(2026, 11, 24), date(2026, 11, 24))

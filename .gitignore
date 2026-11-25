@@ -1,9 +1,29 @@
+# Dependencies and build output
 node_modules/
 dist/
+frontend/dist/
+backend/static/
+
+# Python
 __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+
+# Secrets and local settings (never commit these)
 .env
+.env.*
+!.env.example
+
+# Databases and backups
 *.db
+*.sqlite3
 backups/
+*.dump
+
+# Logs and editor or system files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

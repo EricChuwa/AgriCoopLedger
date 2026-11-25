@@ -7,7 +7,7 @@ Every name, phone number and national ID here is made up. The demo password is p
 """
 
 import sys
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
@@ -39,6 +39,7 @@ FARMERS = [
 ]
 
 # (produce, {grade: price per kg})
+SELLING = {"Maize": {"A": 380, "B": 320, "C": 260}, "Beans": {"A": 850, "B": 700, "C": 600}}
 PRODUCE = [("Maize", {"A": 300, "B": 250, "C": 200}), ("Beans", {"A": 700, "B": 620, "C": 500})]
 
 # farmer index, produce, grade, kg, days ago, paid share of total owed (0 to 1)
@@ -92,6 +93,9 @@ def seed(reset: bool = False, session_factory=None) -> None:
                 db.add(m.Price(produce_id=p.id, grade=grade, price_per_kg=price, effective_from=start,
                                created_by_id=manager.id))
             audit.record(db, manager, "produce.created", "produce", p.id, f"Added {name} with grades A, B and C.")
+            for grade, price in SELLING[name].items():
+                db.add(m.SellingPrice(produce_id=p.id, grade=grade, price_per_kg=price, effective_from=start,
+                                      created_by_id=manager.id))
 
         farmers = []
         for name, nid, phone, village in FARMERS:
@@ -126,18 +130,70 @@ def seed(reset: bool = False, session_factory=None) -> None:
             db.flush()
             audit.record(db, officer, "payment.recorded", "payment", p.id,
                          f"Recorded P-{p.id:06d}: paid {amount:,} RWF to {farmers[idx].full_name}.")
+
+        # Buyer side: one paid sale, one part paid with a payment waiting for confirmation, one new request.
+        buyers = [("Kigali Fresh Market", "+250788610001", "Maize", "A", 120, 380, 3),
+                  ("Huye Schools Kitchen", "+250788610002", "Beans", "B", 40, 700, 1)]
+        for n, (buyer, bphone, pname, grade, kg, price, ago) in enumerate(buyers):
+            grams = to_grams(kg)
+            sale = m.Sale(cooperative_id=coop.id, buyer_name=buyer, buyer_phone=bphone, produce_id=produce[pname].id,
+                          grade=grade, weight_grams=grams, price_per_kg=price, value=value_of(grams, price),
+                          sale_date=today() - timedelta(days=ago), recorded_by_id=clerk.id)
+            db.add(sale)
+            db.flush()
+            audit.record(db, clerk, "sale.recorded", "sale", sale.id,
+                         f"Sold {kg} kg {pname} grade {grade} to {buyer} at {price:,} RWF per kg, {sale.value:,} RWF (S-{sale.id:06d})")
+            amount = sale.value if n == 0 else sale.value // 2
+            status = m.BUYER_PAY_CONFIRMED if n == 0 else m.BUYER_PAY_PENDING
+            bp = m.BuyerPayment(cooperative_id=coop.id, sale_id=sale.id, amount=amount, method="momo", status=status,
+                                reference=f"BUYER-{n + 1:03d}", payment_date=today() - timedelta(days=max(ago - 1, 0)),
+                                recorded_by_id=clerk.id,
+                                decided_by_id=officer.id if status == m.BUYER_PAY_CONFIRMED else None,
+                                decided_at=datetime.now(timezone.utc) if status == m.BUYER_PAY_CONFIRMED else None)
+            db.add(bp)
+            db.flush()
+            audit.record(db, clerk, "buyer_payment.recorded", "buyer_payment", bp.id,
+                         f"Recorded {amount:,} RWF from {buyer} for S-{sale.id:06d}, waiting for confirmation (R-{bp.id:06d})")
+            if status == m.BUYER_PAY_CONFIRMED:
+                audit.record(db, officer, "buyer_payment.confirmed", "buyer_payment", bp.id,
+                             f"Confirmed R-{bp.id:06d}, {amount:,} RWF for S-{sale.id:06d}.")
+        order = m.BuyerOrder(cooperative_id=coop.id, buyer_name="Aimable Nkurunziza", buyer_phone="+250788610003",
+                             produce_id=produce["Maize"].id, grade="B", weight_grams=to_grams(60),
+                             note="Pickup on Friday if possible")
+        db.add(order)
+        db.flush()
+        audit.record_for(db, coop.id, None, "Aimable Nkurunziza (buyer, not signed in)", "order.requested", "order", order.id,
+                         f"Request O-{order.id:06d}: 60 kg Maize grade B")
         db.commit()
     print(f"Demo cooperative ready. Sign in as aline (Manager), patrick (Collection Clerk) "
           f"or claudine (Payment Officer). Password: {PASSWORD}")
 
 
 def _wipe(db, coop_id: int) -> None:
-    for model in (m.AuditEntry, m.Correction, m.Payment, m.Delivery, m.Farmer):
-        for row in db.scalars(select(model).where(model.cooperative_id == coop_id)).all():
+    """Remove the cooperative and everything under it, children first so PostgreSQL's foreign keys are satisfied."""
+    batch_ids = list(db.scalars(select(m.PaymentBatch.id).where(m.PaymentBatch.cooperative_id == coop_id)))
+    steps = [
+        (m.BuyerPayment, m.BuyerPayment.cooperative_id == coop_id),
+        (m.Sale, m.Sale.cooperative_id == coop_id),
+        (m.BuyerOrder, m.BuyerOrder.cooperative_id == coop_id),
+        (m.Dispute, m.Dispute.cooperative_id == coop_id),
+        (m.AuditEntry, m.AuditEntry.cooperative_id == coop_id),
+        (m.Correction, m.Correction.cooperative_id == coop_id),
+        (m.Payment, m.Payment.cooperative_id == coop_id),
+    ]
+    if batch_ids:
+        steps.append((m.BatchLine, m.BatchLine.batch_id.in_(batch_ids)))
+    steps += [
+        (m.PaymentBatch, m.PaymentBatch.cooperative_id == coop_id),
+        (m.Delivery, m.Delivery.cooperative_id == coop_id),
+        (m.Farmer, m.Farmer.cooperative_id == coop_id),
+    ]
+    for model, condition in steps:
+        for row in db.scalars(select(model).where(condition)).all():
             db.delete(row)
-    db.flush()
+        db.flush()
     for p in db.scalars(select(m.ProduceType).where(m.ProduceType.cooperative_id == coop_id)).all():
-        for price in list(p.prices):
+        for price in list(p.prices) + list(p.selling_prices):
             db.delete(price)
         db.delete(p)
     for u in db.scalars(select(m.User).where(m.User.cooperative_id == coop_id)).all():
