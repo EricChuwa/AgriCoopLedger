@@ -6,9 +6,9 @@ For the people who use the system every day: the cooperative Manager, the Collec
 
 | Role | Their job in the system |
 |---|---|
-| Manager | Sets up staff and prices. Approves new farmers and payment batches. Corrects or voids wrong entries. Reads reports and the audit log. Does not record deliveries or payments. |
-| Collection Clerk | Proposes new farmers. Records every delivery, also without a connection. Can ask a Manager to correct a delivery. |
-| Payment Officer | Records every payment to a farmer and makes payment batches. Reads reports. Cannot see a full national ID number. |
+| Manager | Sets up staff and prices, including the selling price. Approves new farmers and payment batches. Corrects or voids wrong entries and decides disputes. Reads reports and the audit log. Does not record deliveries, payments, sales or buyer payments. |
+| Collection Clerk | Proposes new farmers. Records every delivery, also without a connection. Can ask a Manager to correct a delivery or raise a dispute on it. Answers buyer order requests and records counter sales and buyer payments. |
+| Payment Officer | Records every payment to a farmer and makes payment batches. Confirms or rejects buyer payments. Can raise a dispute on a payment. Reads reports. Cannot see a full national ID number. |
 
 Only the Clerk records deliveries and only the Payment Officer records payments. This keeps one person from both receiving produce and paying for it.
 
@@ -71,6 +71,18 @@ The system refuses an amount larger than what is owed. It also refuses a mobile 
 2. A Manager opens the batch and approves it, or declines it with a reason. You cannot approve a batch you made.
 3. After approval, open the batch and press **Pay** on each farmer's row. Choose cash or mobile money and confirm. Each farmer shows *Not paid*, *Part paid* or *Paid*, and the batch shows the same.
 
+### If something is wrong but the numbers are right
+
+Use **Dispute** on a delivery (Clerk) or a payment (Payment Officer). Give a reason. The record shows **Disputed** until a Manager decides under **Disputes**. The Manager upholds or dismisses it and writes a note of at least 5 characters. Upholding does not change any amount. If a change is needed, the Manager then corrects or voids the record with its own reason. A record can have one open dispute at a time.
+
+### Delivery and payment status
+
+Each delivery shows a status (Recorded, Correction pending, Disputed, Voided) and a payment status (Unpaid, In batch, Part paid, Paid). They are worked out from the records, so they always match them.
+
+### Without a connection
+
+If the connection drops while you save a delivery, it is kept on your device and shown as waiting to send. It is sent once the connection returns. Open the delivery form while you are online first. Reloading the page while offline does not work.
+
 ## 6. Setting rates: produce and prices (Manager)
 
 Open **Produce and prices**. Clerks and Payment Officers see the same page as **Prices**, read only.
@@ -80,6 +92,18 @@ Open **Produce and prices**. Clerks and Payment Officers see the same page as **
 - **Rename** fixes a spelling. **Stop using** hides a crop from the delivery form without losing its history.
 
 A new price applies to deliveries dated from its start date. Deliveries already recorded keep the price they were recorded with.
+
+**Selling prices.** The same page has a selling price for each produce and grade, set only by the Manager. When you set one, the screen suggests the current buying price plus 20 percent, rounded up to the next 10 RWF. It is only a suggestion, you can type any price. The same price again is refused, and the start date cannot be earlier than the latest one. Sales already made keep their price. Without a selling price a sale cannot be made.
+
+## 6a. Selling to buyers
+
+**Buy page (anyone).** Open the Buy page from the landing page. It shows kilograms in stock for each cooperative, produce and grade, with no prices. A buyer sends an order request with name, phone, produce, grade and weight. It promises nothing. A phone number can have 3 open requests at a cooperative.
+
+**Collection Clerk.** Open **Sales**. Accept an order request (a sale is made from stock at the Manager's selling price) or decline it with a reason. Record a counter sale directly, record a payment from the buyer against a sale (it starts as pending), or void a sale with a reason. A sale cannot be more than the stock.
+
+**Payment Officer.** Confirm or reject pending buyer payments. Only confirmed payments count as paid.
+
+**Manager.** Reads the Sales pages and cannot record or decide anything there.
 
 ## 7. Looking things up
 
@@ -98,7 +122,7 @@ A new price applies to deliveries dated from its start date. Deliveries already 
 
 **Staff.** Open **Staff**, then **Add staff member**. Enter the name, an optional username (one is made from the name if you leave it empty), the phone number and the role. Press **Edit** on a row to change a name, username or phone. The other buttons on the row change a role, deactivate or reactivate a person, or reset their password. A deactivated person cannot sign in but their name stays on the records they made.
 
-**Approvals.** Waiting farmers (Farmers page, filter Waiting) and payment batches (Payment batches) show on your dashboard. Approve, or decline with a reason.
+**Approvals.** Waiting farmers (Farmers page, filter Waiting), payment batches (Payment batches), corrections and disputes show on your dashboard. Approve or uphold, or decline or dismiss with a reason or note. You cannot decide on a farmer or batch that you made yourself.
 
 **Audit log.** Open **Audit log** to see who did what and when: every delivery, payment, correction, void, price change and staff change. Filter by area, person and dates. Nobody can edit or delete an entry. Press **Check integrity** to have the system re-check that no entry has been changed or removed behind its back. A green result means every entry is intact. A red result names the first entry that does not match. Tell whoever looks after the database.
 

@@ -140,10 +140,7 @@ export default function Landing() {
               {user ? (
                 <Link className="lp-btn lp-btn--small" to="/dashboard">Open dashboard</Link>
               ) : (
-                <>
-                  <Link className="lp-link lp-signin" to="/login">Sign in</Link>
-                  <Link className="lp-btn lp-btn--small" to="/signup">Register</Link>
-                </>
+                <Link className="lp-btn lp-btn--small" to="/login">Sign in</Link>
               )}
             </div>
           </header>

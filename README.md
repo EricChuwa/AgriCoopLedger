@@ -2,7 +2,7 @@
 
 A record-keeping system for agricultural cooperatives in Rwanda. It replaces paper-based produce collection and farmer payment records with one digital ledger: who delivered what, what it was worth, what was paid, and what is still owed.
 
-> Status: built to the SRS requirement tables (FR 1 to 7, NFR, BR) for the course prototype, with the documented gaps listed below. The front end talks to the real API and database. It uses synthetic seed data only. 133 backend tests pass, and a 60 check browser smoke test passes against the seeded demo.
+> Status: built to SRS v2.2 (FR 1 to 12, NFR, BR) for the course prototype, with the documented gaps listed below. The front end talks to the real API and database. It uses synthetic seed data only. A demo copy is hosted on Render (see Hosted demo on Render).
 
 Docs: [user guide](docs/user-guide.md) (SRS 2.6) and [technical briefing](docs/TECHNICAL_BRIEFING.md) (how it is built and why).
 
@@ -21,9 +21,9 @@ The SRS defines three roles. The server checks the role on every request, so hid
 
 | Role | Can do | Cannot do |
 |---|---|---|
-| Manager | Create and edit staff and assign roles, approve or decline proposed farmers and payment batches, set prices and produce, correct deliveries, void deliveries and payments, approve or reject correction requests, read and verify the audit log, see reports | Record a delivery or a payment (BR 2) |
-| Collection Clerk | Propose and edit farmers, record deliveries, print delivery receipts, ask a Manager to correct a delivery, read prices | Record payments, void, set prices |
-| Payment Officer | Record payments, make payment batches and pay from them, print payment receipts, see reports, read prices | Record deliveries, see full national IDs (masked, NFR 14) |
+| Manager | Create and edit staff and assign roles, approve or decline proposed farmers and payment batches, set prices and produce, correct deliveries, void deliveries and payments, approve or reject correction requests, set buying and selling prices, decide disputes, read and verify the audit log, see reports, read the buyer side | Record a delivery, a payment, a sale or a buyer payment (BR 2, BR 11) |
+| Collection Clerk | Propose and edit farmers, record deliveries, print delivery receipts, ask a Manager to correct a delivery, raise a dispute on a delivery, answer buyer order requests, record counter sales and buyer payments, read prices | Record payments, void deliveries, set prices |
+| Payment Officer | Record payments, make payment batches and pay from them, print payment receipts, raise a dispute on a payment, confirm or reject buyer payments, see reports, read prices | Record deliveries, see full national IDs (masked, NFR 14) |
 
 ## What it does
 
@@ -34,6 +34,10 @@ The SRS defines three roles. The server checks the role on every request, so hid
 - Nothing is deleted. A Manager voids an entry or corrects a delivery with a reason, and the old values stay on record. A Clerk can send a correction request, and a Manager approves or rejects it.
 - Farmer enrolment approval: a Clerk proposes a farmer and a Manager approves or declines. A Manager adds farmers directly.
 - Payment batches: a Payment Officer groups farmers' balances into a batch, a Manager approves it, then payments are recorded against it. Part paid and paid are worked out from the payments.
+- Delivery and payment statuses, worked out from the records: recorded, correction pending, disputed or voided, and unpaid, in batch, part paid or paid.
+- Disputes: a Clerk disputes a delivery, a Payment Officer a payment, and a Manager decides with a note. Upholding changes no amount. A correction or void does.
+- Selling prices: only the Manager sets them (per produce and grade, with a start date). The screen suggests the buying price plus 20 percent, rounded up to 10 RWF. A sale needs a selling price.
+- Buyer side: a public Buy page shows stock (kilograms only, no prices) and takes order requests (3 open per phone number). A Clerk accepts (a sale from stock) or declines, records counter sales and buyer payments, and a Payment Officer confirms them. The Manager reads only.
 - Offline deliveries: a Clerk's deliveries are kept on the device when the network is down and sent automatically later, once each.
 - Receipts for deliveries and payments, printable or saved as PDF from the browser.
 - Reports: collection summary by produce, grade and period; farmer statement with opening balance; outstanding balances. Print or save as PDF, or download CSV.
@@ -41,9 +45,6 @@ The SRS defines three roles. The server checks the role on every request, so hid
 - Recording a delivery or payment twice by accident (double click, retry after a lost connection) is blocked: each form submission carries a one-time id and the server records it once.
 - Lists are paged and filtered on the server (25 a page), and totals, statements, reports and the dashboard are worked out on the server, so a year of data does not have to be downloaded to the browser.
 - Sessions end after 15 minutes without activity (checked on the server, and the screen signs out too).
-- A dashboard for each role. The produce mix chart can show the week, month or quarter. Reports and receipts print on A4 with their own print layout.
-- Light and dark mode on the landing page, the sign in and create account pages, and the signed-in app. The choice is saved in the browser and shared by all three. Printed pages always stay light.
-- A public landing page with live totals (cooperatives, farmers, deliveries, kilograms) read from the database through `GET /api/public/stats`. It returns counts only, and voided deliveries and inactive farmers are not counted.
 - Passwords are hashed with argon2. Staff sign in with a username (the phone number also works) and can change their own password.
 
 ## Tech stack
@@ -54,7 +55,7 @@ The SRS defines three roles. The server checks the role on every request, so hid
 | Backend | Python, FastAPI, SQLAlchemy 2 |
 | Database | PostgreSQL (SQLite for tests and quick local runs) |
 | Auth | Signed session cookies, argon2 |
-| Tests | pytest (backend), Playwright smoke script (browser) |
+| Tests | pytest |
 | Run | Docker Compose |
 
 Money is whole RWF integers, never floats.
@@ -64,8 +65,7 @@ Money is whole RWF integers, never floats.
 ```
 backend/app/        FastAPI app: models, schemas, routers, services, seed
 backend/tests/      pytest suite
-frontend/src/       React app (pages, components, styles, assets/images)
-scripts/            browser smoke test (Playwright)
+frontend/src/       React app
 docs/               SRS and architecture design
 docker-compose.yml  database, backend, frontend, daily backup
 ```
@@ -79,7 +79,7 @@ cp .env.example .env
 docker compose up
 ```
 
-- App and landing page: http://localhost:5173
+- App: http://localhost:5173
 - API health check: http://localhost:8000/api/health
 
 Load the demo cooperative (synthetic data) in a second terminal:
@@ -98,7 +98,7 @@ Sign in with a username and the password `harvest2026`:
 
 `python -m app.seed --reset` rebuilds the demo cooperative.
 
-Or sign up on the site and choose what you are signing up as. **Manager** starts a new cooperative (the name must not be registered yet) and you can sign in straight away. This is how a Manager account is created. **Collection Clerk** or **Payment Officer** asks to join an existing cooperative by its exact name; its Manager approves the request under Staff (keeping the role asked for or choosing another), or declines it. The person cannot sign in until the Manager approves.
+Or sign up on the site. A new cooperative name creates the cooperative and makes you its Manager. A name that is already registered sends a request to that cooperative's Manager, who approves it with a role (or declines it) under Staff. The person cannot sign in until the Manager approves.
 
 The database now has a `users.approval` column. If you have an older database, reset it as described below before running the new code.
 
@@ -127,11 +127,15 @@ docker compose up
 docker compose exec backend python -m app.seed
 ```
 
-For a local SQLite file, stop the backend, delete the `.db` file and run `python -m app.seed` again. `--reset` cannot be used on an old file, because it reads the new columns before it wipes anything. The newest changes (farmer enrolment approval and payment batches) added columns and tables, so this reset is needed once more.
+For a local SQLite file, stop the backend, delete the `.db` file and run `python -m app.seed` again. `--reset` cannot be used on an old file, because it reads the new columns before it wipes anything. The newest changes added tables (disputes, buyer side, selling prices). New tables are created on their own, but if you are upgrading from an older version, resetting once is the safe route.
 
 Without Docker, delete `backend/agricoop.db` (or whichever SQLite file you use) and run `python -m app.seed` again.
 
-## Hosted demo with HTTPS (NFR 12)
+## Hosted demo on Render
+
+The repository has a `render.yaml` Blueprint: one web service (built from `Dockerfile.render`, serving the API and the built front end from one address) and a free PostgreSQL database. Pushing to `main` rebuilds it. `SEED_DEMO=true` loads the demo cooperative the first time. Steps, the keep-awake ping and the Backblaze backup job are in `docs/DEPLOY_RENDER.md`. Live demo: https://agricoopledger.onrender.com/
+
+## Hosted demo with HTTPS on your own server (NFR 12)
 
 On a server with a domain pointing at it and ports 80 and 443 open:
 
@@ -144,24 +148,12 @@ Caddy gets and renews the certificate, redirects HTTP to HTTPS, serves the built
 
 ## Tests
 
-Backend:
-
 ```
 cd backend
 python -m pytest
 ```
 
-The suite (133 tests) checks the money rules against hand-calculated values (for example 12.345 kg at 700 RWF per kg is 8,642 RWF), every role against every route, overpayment, voiding, corrections, the audit trail, cooperative isolation, the 15 minute session limit, duplicate submissions, the audit hash chain, paging, statements, reports, the public landing totals and the seed data.
-
-Browser smoke test (not part of pytest). It needs Playwright, a freshly seeded database, the backend on port 8000 and the frontend on port 5173:
-
-```
-pip install playwright && playwright install chromium
-docker compose exec backend python -m app.seed --reset
-python scripts/e2e_smoke.py
-```
-
-It signs in as each role and opens every screen that role can reach, checking for failed API calls and console errors. It also records a delivery and a payment, checks that a paid farmer leaves the payment list, creates a cooperative, sends and approves a join request, switches light and dark mode, and checks the landing and dashboard pages at phone width. It changes the data, so reset the seed before running it again.
+The suite (204 tests) checks the money rules against hand-calculated values (for example 12.345 kg at 700 RWF per kg is 8,642 RWF), every role against every route, overpayment, voiding, corrections, the audit trail, cooperative isolation, the 15 minute session limit, duplicate submissions, the audit hash chain, paging, statements, reports and the seed data.
 
 ## Backups
 
@@ -175,17 +167,17 @@ docker compose exec -T db pg_restore -U agri -d agricoopledger --clean --if-exis
 
 These are deliberate and stated so nobody has to find them:
 
-- Offline entry, farmer enrolment approval and payment batches are built. Disputes, buyer sales and buyer payments are not built. The core requirement tables (FR 1 to 7, NFR, BR) are the contract. The SRS contradicts itself in places (it names an Accountant in some sections and a Payment Officer in others, and one section assumes a single rate where another defines grades). The build follows the requirement tables and three roles.
+- SRS v2.2 describes the build. Offline entry, farmer enrolment approval, payment batches, disputes, selling prices and the buyer side are built. Not built: unidentified deliveries and manual identification, collection point and member number, full offline use, buyer money funding farmer batches, a Board role and a farmer view. See Appendix D of the SRS.
+- Public order requests are limited only by 3 open requests per phone number. The public totals and stock are not rate limited.
 - Offline works for the Clerk's deliveries only. There is no service worker, so a page reload without a connection fails. The queue is stored in the browser on that device. A direct payment is still allowed beside batches.
 - Farmers are not paged: the whole farmer list (a few hundred rows) is loaded and filtered in the browser.
 - The audit chain detects edits and removal of entries from the middle of the log. It does not detect removal of the newest entries, and anyone who can rewrite the whole table and recompute every hash could forge it. Keep database access to the administrator.
-- HTTPS (NFR 12) is for the hosted demo only and the Caddy setup is untested. Local runs use HTTP.
+- HTTPS (NFR 12) is provided by Render on the hosted demo. The Caddy setup for your own server is untested. Local runs use HTTP.
+- On Render's free plan the database expires after 30 days and the web service sleeps when idle (a scheduled ping from cron-job.org keeps it awake). The daily backup runs in Docker Compose. A backup of the hosted database to Backblaze is planned and not yet set up.
 - Schema is created with `create_all`, not Alembic migrations, so a schema change needs a database reset.
 - No sign-in throttling beyond argon2's cost.
 - Measured on SQLite with a year of data (5,475 deliveries, 300 farmers): every endpoint under 40 ms and a page of deliveries is about 8 KB. Not measured on PostgreSQL, over a real network or against NFR 1 on a hosted server.
-- Docker, PostgreSQL and the backup service were not run in the environment the code was tested in.
-- `GET /api/public/stats` needs no sign in, so anyone can read the cooperative, farmer, delivery and kilogram totals. It holds no names or amounts, but remove it if totals should stay private.
-- The sunset and sunrise animation when switching light and dark mode uses the browser View Transitions API. Browsers without it, and people who ask for reduced motion, get an instant switch.
+- The Docker stack, PostgreSQL concurrency, the backup service and a restore were not run in the environment the code was tested in. The Render build worked and the hosted demo runs on PostgreSQL.
 - Tested in Chromium. Edge uses the same engine but was not run separately. Android phone browsers were checked only through a narrow viewport, not a device.
 
 ## Repository

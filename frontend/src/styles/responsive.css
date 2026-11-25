@@ -239,3 +239,148 @@ button.balance-pay { background: transparent; border: 0; padding: 0; font: inher
 .sales-sum strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .sales-stock { margin: 0 0 1rem; }
 .sales-stock > summary { cursor: pointer; font-weight: 700; padding: .4rem 0; }
+
+/* Phone fixes: form spacing, report view switch, landing header sign in */
+.card h1 + form { margin-top: 1.5rem; }
+
+@media screen and (max-width: 760px) {
+  .filters > .filter:has(.seg) { flex: 1 1 100%; }
+  .seg { width: 100%; }
+  .seg button { flex: 1 1 0; min-width: 0; padding: .6rem .35rem; font-size: .9rem; line-height: 1.2; }
+}
+
+@media (max-width: 560px) {
+  .lp-nav .lp-signin { display: inline-flex; align-items: center; padding-inline: .35rem; font-size: .95rem; }
+  .lp-nav .wordmark { padding-inline: .5rem; font-size: 1rem; gap: .35rem; }
+  .lp-nav .lp-btn { padding-inline: .85rem; }
+  .lp-nav-end { gap: .15rem; }
+}
+@media (max-width: 380px) {
+  .lp-nav .wordmark { font-size: .9rem; }
+  .lp-nav .theme-toggle { width: 2.25rem; height: 2.25rem; }
+}
+
+@media screen and (max-width: 760px) {
+  .filter { grid-template-columns: minmax(0, 1fr); }
+  .filter input, .filter select { min-width: 0; max-width: 100%; width: 100%; box-sizing: border-box; }
+  .filter input[type="date"] { padding-inline: .6rem; }
+}
+@media (max-width: 380px) {
+  .lp-nav .wordmark { font-size: .85rem; padding-inline: .4rem; }
+  .lp-nav .lp-btn { padding-inline: .7rem; font-size: .9rem; }
+}
+
+@media (max-width: 560px) {
+  .lp-nav .lp-nav-end .lp-signin { display: inline-flex; }
+}
+@media screen and (max-width: 760px) {
+  .table td:first-child:not([data-label]) { text-align: left; justify-content: flex-start; }
+}
+
+@media screen and (max-width: 760px) {
+  .table-scroll > .table > tbody > tr > td .cell-stack:not(:has(.pill)) { text-align: left; }
+  .table-scroll > .table > tbody > tr:not([data-open="true"]) > td:not(:has(.pill)):not([data-label="Amount"]):not([data-label="Value"]):not([data-label="Owed"]):not([data-label="Balance owed"]) { justify-content: flex-start; text-align: left; }
+}
+@media (max-width: 560px) {
+  .lp-nav .lp-nav-end .lp-signin { white-space: nowrap; }
+  .lp-nav .wordmark { font-size: .9rem; }
+}
+
+@media (max-width: 560px) {
+  .lp-nav { gap: .25rem; padding-right: .4rem; }
+  .lp-nav .wordmark-text { font-size: .95rem; }
+  .lp-nav .wordmark { padding-inline: .35rem; gap: .3rem; }
+  .lp-nav .lp-nav-end .lp-signin { padding: .5rem .5rem; font-size: .9rem; }
+  .lp-nav .lp-btn { padding-inline: .8rem; }
+}
+@media (max-width: 380px) {
+  .lp-nav .wordmark-text { font-size: .88rem; }
+  .lp-nav .lp-nav-end .lp-signin { padding-inline: .35rem; }
+}
+
+@media (max-width: 380px) {
+  .lp-nav .wordmark-text { font-size: .8rem; }
+  .lp-nav .wordmark-mark { width: 24px; height: 24px; }
+  .lp-nav .lp-btn { padding-inline: .65rem; font-size: .85rem; }
+  .lp-nav .lp-nav-end .lp-signin { font-size: .85rem; }
+}
+@media (max-width: 340px) {
+  .lp-nav .wordmark-text { font-size: .7rem; }
+  .lp-nav .wordmark-mark { display: none; }
+  .lp-nav .lp-nav-end .lp-signin { padding-inline: .25rem; font-size: .8rem; }
+  .lp-nav .lp-btn { padding-inline: .5rem; font-size: .8rem; }
+}
+
+@media (max-width: 420px) {
+  .buy-bar-end { gap: .4rem; }
+  .buy-bar .wordmark-text { font-size: .9rem; }
+  .buy-bar .wordmark { gap: .3rem; }
+}
+@media (max-width: 340px) {
+  .buy-bar .wordmark-mark { display: none; }
+}
+
+@media (max-width: 560px) {
+  .lp-nav .lp-theme, .lp-nav .theme-toggle { display: inline-flex; width: 2.5rem; height: 2.5rem; }
+  .lp-nav-end { gap: .35rem; }
+}
+@media (max-width: 340px) {
+  .lp-nav .lp-theme, .lp-nav .theme-toggle { width: 2.1rem; height: 2.1rem; }
+}
+
+/* ---------- Final phone polish: one consistent scale for the bars ---------- */
+@media (max-width: 560px) {
+  .lp-page .lp-nav { gap: .4rem; padding: .4rem .5rem .4rem .75rem; min-height: 3.5rem; align-items: center; }
+  .lp-page .lp-nav .wordmark { padding: 0; gap: .45rem; font-size: clamp(.95rem, 5.2vw, 1.25rem); flex: 0 1 auto; min-width: 0; }
+  .lp-page .lp-nav .wordmark-text { font-size: 1em; white-space: nowrap; }
+  .lp-page .lp-nav .wordmark-mark { display: none; }
+  .lp-page .lp-nav .lp-nav-end { gap: .4rem; margin-left: auto; flex: none; }
+  .lp-page .lp-nav .lp-theme, .lp-page .lp-nav .theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; }
+  .lp-page .lp-nav .lp-btn { min-height: 2.5rem; padding: 0 1rem; font-size: .95rem; line-height: 1; display: inline-flex; align-items: center; }
+
+  .buy-bar .wordmark { font-size: clamp(.95rem, 5.2vw, 1.25rem); }
+  .buy-bar .wordmark-mark { display: none; }
+}
+@media (max-width: 340px) {
+  .lp-page .lp-nav { padding-left: .55rem; gap: .25rem; }
+  .lp-page .lp-nav .wordmark { gap: .3rem; }
+  .lp-page .lp-nav .lp-theme, .lp-page .lp-nav .theme-toggle { width: 2.25rem; height: 2.25rem; }
+  .lp-page .lp-nav .lp-btn { padding: 0 .75rem; font-size: .88rem; min-height: 2.25rem; }
+}
+
+@media screen and (max-width: 899px) {
+  .app-tabs { padding: .4rem; gap: .15rem; border-radius: 26px; }
+  .app-tab { gap: .25rem; padding: .55rem .15rem .5rem; border-radius: 20px; font-size: .75rem; line-height: 1.1; min-width: 0; }
+  .app-tab span { white-space: nowrap; }
+  .app-main { padding-bottom: 6.5rem; }
+}
+@media (max-width: 340px) {
+  .app-tab { font-size: .68rem; }
+  .app-tab svg { width: 20px; height: 20px; }
+}
+
+/* Five-way filters (Farmers) become two tidy rows instead of five cramped cells */
+@media screen and (max-width: 560px) {
+  .seg:has(> :nth-child(5):last-child) { display: grid; grid-template-columns: repeat(6, 1fr); }
+  .seg:has(> :nth-child(5):last-child) > button { grid-column: span 2; white-space: nowrap; }
+  .seg:has(> :nth-child(5):last-child) > button:nth-child(n+4) { grid-column: span 3; }
+}
+
+@media screen and (max-width: 760px) {
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])) > th { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not([data-open="true"]) > td:has(.pill) .pill { font-size: .72rem; padding-inline: .45rem; }
+}
+@media (max-width: 360px) {
+  .seg:has(> :nth-child(5):last-child) > button { font-size: .8rem; padding-inline: .15rem; white-space: normal; line-height: 1.15; }
+  .seg button { font-size: .82rem; padding-inline: .2rem; }
+  .app-tab { font-size: .66rem; letter-spacing: -.01em; padding-inline: .05rem; }
+  .app-tabs { padding: .35rem .3rem; left: .4rem; right: .4rem; }
+}
+@media (max-width: 340px) {
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])):not([data-open="true"]) > th .cell-name { font-size: .92rem; }
+  .table-scroll > .table > tbody > tr:not(:has(input, select, td[colspan])) > th { hyphens: manual; overflow-wrap: break-word; }
+}
+
+@media (max-width: 340px) {
+  .lp-page .lp-nav .wordmark, .buy-bar .wordmark { font-size: .9rem; }
+}
